@@ -5,6 +5,7 @@ import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.data.local.AddonPreferences
 import com.nuvio.tv.data.remote.supabase.SupabaseAddon
+import com.nuvio.tv.domain.model.ServerConfiguration
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -24,7 +25,8 @@ class AddonSyncService @Inject constructor(
     private val authManager: AuthManager,
     private val addonPreferences: AddonPreferences,
     private val profileManager: ProfileManager,
-    private val syncClientIdentity: SyncClientIdentity
+    private val syncClientIdentity: SyncClientIdentity,
+    private val serverConfiguration: ServerConfiguration
 ) {
     private suspend fun <T> withJwtRefreshRetry(block: suspend () -> T): T {
         return try {
@@ -88,25 +90,20 @@ class AddonSyncService @Inject constructor(
 
     suspend fun getRemoteAddonUrls(): Result<List<String>> = withContext(Dispatchers.IO) {
         try {
-            val effectiveUserId = authManager.getEffectiveUserId(fallbackToOwnIdOnFailure = false)
-                ?: return@withContext Result.failure(
-                    IllegalStateException("Unable to resolve sync owner for addon sync")
-                )
+            val profileId = profileManager.activeProfileId.value
 
-            val activeProfile = profileManager.activeProfile
-            // Was "-> 1 (the primary slot)" — now the actual Manager's id.
-            val profileId = if (activeProfile != null && !activeProfile.isPrimary && activeProfile.usesPrimaryAddons)
-                                profileManager.profiles.value.firstOrNull { it.isManager }?.id
-                                    ?: profileManager.activeProfileId.value
-                            else profileManager.activeProfileId.value
-
+            // Addons aren't a user-managed list on this backend at all — a
+            // profile's whole set is exactly Streams (AIOStreams) and/or
+            // Catalogs (AIOMetadata), synthesized fresh from whichever of
+            // those two accounts it actually has. No usesPrimaryAddons
+            // delegation to a Manager either: that's an official-backend-only
+            // concept this backend has no equivalent for.
+            val params = buildJsonObject {
+                put("p_profile_id", profileId)
+                put("p_backend_url", serverConfiguration.backendUrl)
+            }
             val remoteAddons = withJwtRefreshRetry {
-                postgrest.from("addons")
-                    .select { filter {
-                        eq("user_id", effectiveUserId)
-                        eq("profile_id", profileId)
-                    } }
-                    .decodeList<SupabaseAddon>()
+                postgrest.rpc("sync_pull_addons", params).decodeList<SupabaseAddon>()
             }
 
             val nameMap = mutableMapOf<String, String>()
