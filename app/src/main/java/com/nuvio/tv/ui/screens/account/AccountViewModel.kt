@@ -129,7 +129,10 @@ class AccountViewModel @Inject constructor(
                 val current = _uiState.value.syncOverview ?: return@collect
                 val updated = current.copy(
                     perProfile = current.perProfile.map { stat ->
-                        val local = profiles.firstOrNull { it.id == stat.profileId }
+                        // stat.profileId is the old dead get_sync_overview RPC's own Int
+                        // slot — never a real profile uuid, so this never actually matches
+                        // anymore. Left as a no-op enrichment rather than removed outright.
+                        val local = profiles.firstOrNull { it.id == stat.profileId.toString() }
                         if (local != null) {
                             stat.copy(profileName = local.name, avatarColorHex = local.avatarColorHex)
                         } else stat

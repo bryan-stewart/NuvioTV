@@ -77,7 +77,7 @@ class PluginDataStore @Inject constructor(
     val codeDir: File
         get() {
             val pid = effectiveProfileId()
-            val dirName = if (pid == 1) "plugin_code" else "plugin_code_p${pid}"
+            val dirName = if (pid.isBlank()) "plugin_code" else "plugin_code_p${pid}"
             return File(context.filesDir, dirName)
         }
 

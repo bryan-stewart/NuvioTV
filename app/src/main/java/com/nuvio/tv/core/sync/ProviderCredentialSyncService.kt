@@ -60,7 +60,7 @@ class ProviderCredentialSyncService @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val syncMutex = Mutex()
     private val stateLock = Any()
-    private val observedSnapshots = mutableMapOf<Int, ProviderCredentialSnapshot>()
+    private val observedSnapshots = mutableMapOf<String, ProviderCredentialSnapshot>()
     private val baselineSnapshots = mutableMapOf<ProviderCredentialScope, ProviderCredentialSnapshot>()
     private val pendingScopes = mutableSetOf<ProviderCredentialScope>()
     private var foregroundPullJob: Job? = null

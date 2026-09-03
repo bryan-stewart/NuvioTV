@@ -64,7 +64,7 @@ class WatchedItemsSyncService @Inject constructor(
      * another profile's entries, which is the same misread this whole guard exists
      * to prevent.
      */
-    private val syncPoints = ConcurrentHashMap<Int, Long>()
+    private val syncPoints = ConcurrentHashMap<String, Long>()
 
     private fun syncPointFor(profileId: String): Long = syncPoints[profileId] ?: 0L
 

@@ -12,7 +12,9 @@ data class AccountConnectedStats(
 )
 
 data class ProfileSyncStats(
-    val profileId: String,
+    // Genuinely Int here — this is the old, dead get_sync_overview RPC's own
+    // legacy slot numbering, unrelated to real profile identity.
+    val profileId: Int,
     val profileName: String,
     val avatarColorHex: String,
     val addons: Int = 0,

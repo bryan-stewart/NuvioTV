@@ -214,7 +214,7 @@ fun ProfileSelectionScreen(
     }
     val memberAccess = Membership.access
     var focusedAvatarColor by remember { mutableStateOf(Color(0xFF1E88E5)) }
-    var focusedProfileId by remember { mutableStateOf<Int?>(null) }
+    var focusedProfileId by remember { mutableStateOf<String?>(null) }
     var showCreateProfile by remember { mutableStateOf(false) }
     var longPressedProfile by remember { mutableStateOf<UserProfile?>(null) }
     var suppressOptionsDialogFirstKeyUp by remember { mutableStateOf(true) }
@@ -1331,7 +1331,7 @@ private fun CreateProfileOverlay(
     var selectedColorHex by remember { mutableStateOf("#1E88E5") }
     var selectedAvatarId by remember { mutableStateOf<String?>(null) }
     var focusedAvatarName by remember { mutableStateOf<String?>(null) }
-    var selectedCopySourceId by remember { mutableStateOf<Int?>(null) }
+    var selectedCopySourceId by remember { mutableStateOf<String?>(null) }
     var copyProviderCredentials by remember { mutableStateOf(false) }
     var showSettingsSourceDialog by remember { mutableStateOf(false) }
     val selectedAvatar = remember(avatarCatalog, selectedAvatarId) {

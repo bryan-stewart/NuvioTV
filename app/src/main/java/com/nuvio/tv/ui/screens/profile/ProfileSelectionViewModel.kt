@@ -50,7 +50,7 @@ class ProfileSelectionViewModel @Inject constructor(
     memberAccessRepository: MemberAccessRepository,
     private val profileLockStateDataStore: ProfileLockStateDataStore
 ) : ViewModel() {
-    val activeProfileId: StateFlow<Int> = profileManager.activeProfileId
+    val activeProfileId: StateFlow<String> = profileManager.activeProfileId
     val profiles: StateFlow<List<UserProfile>> = profileManager.profiles
 
     val canAddProfile: Boolean
