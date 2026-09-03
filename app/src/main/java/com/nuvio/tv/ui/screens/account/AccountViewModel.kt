@@ -94,7 +94,9 @@ class AccountViewModel @Inject constructor(
     private var qrLoginExchangeInFlight: Boolean = false
 
     val usesEmailPasswordLogin: Boolean
-        get() = serverConfiguration.isCustom && serverConfiguration.capabilities.emailPasswordAuth
+        get() = serverConfiguration.isCustom &&
+            serverConfiguration.capabilities.emailPasswordAuth &&
+            !serverConfiguration.capabilities.tvLogin
 
     init {
         observeAuthState()
