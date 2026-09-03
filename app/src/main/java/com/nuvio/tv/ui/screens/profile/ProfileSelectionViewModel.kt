@@ -84,7 +84,7 @@ class ProfileSelectionViewModel @Inject constructor(
     private val _isCopyingSettings = MutableStateFlow(false)
     val isCopyingSettings: StateFlow<Boolean> = _isCopyingSettings.asStateFlow()
 
-    val profilePinEnabled: StateFlow<Map<Int, Boolean>> = profileLockStateDataStore.pinEnabled
+    val profilePinEnabled: StateFlow<Map<String, Boolean>> = profileLockStateDataStore.pinEnabled
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     private val _isPinOperationInProgress = MutableStateFlow(false)
@@ -137,7 +137,7 @@ class ProfileSelectionViewModel @Inject constructor(
         if (hasProfileBackgroundAccess.value) profileBackgroundRepository.preloadImages()
     }
 
-    fun selectProfile(id: Int, onComplete: () -> Unit) {
+    fun selectProfile(id: String, onComplete: () -> Unit) {
         viewModelScope.launch {
             profileManager.setActiveProfile(id)
             onComplete()
@@ -148,7 +148,7 @@ class ProfileSelectionViewModel @Inject constructor(
         name: String,
         avatarColorHex: String,
         avatarId: String? = null,
-        copyFromProfileId: Int? = null,
+        copyFromProfileId: String? = null,
         copyProviderCredentials: Boolean = false,
         onComplete: (CreateProfileResult) -> Unit = {}
     ) {
@@ -188,8 +188,8 @@ class ProfileSelectionViewModel @Inject constructor(
     }
 
     fun copyProfileSettings(
-        sourceProfileId: Int,
-        targetProfileId: Int,
+        sourceProfileId: String,
+        targetProfileId: String,
         copyProviderCredentials: Boolean,
         onComplete: (Result<Unit>) -> Unit
     ) {
@@ -220,7 +220,7 @@ class ProfileSelectionViewModel @Inject constructor(
         }
     }
 
-    fun deleteProfile(id: Int) {
+    fun deleteProfile(id: String) {
         viewModelScope.launch {
             profileManager.deleteProfile(id)
             profileSyncService.deleteProfileData(id)
@@ -249,12 +249,12 @@ class ProfileSelectionViewModel @Inject constructor(
         }
     }
 
-    fun isProfilePinEnabled(profileId: Int): Boolean {
+    fun isProfilePinEnabled(profileId: String): Boolean {
         return profilePinEnabled.value[profileId] == true
     }
 
     fun setProfilePin(
-        profileId: Int,
+        profileId: String,
         pin: String,
         currentPin: String? = null,
         onComplete: (SetProfilePinResult) -> Unit
@@ -273,7 +273,7 @@ class ProfileSelectionViewModel @Inject constructor(
         }
     }
 
-    fun clearProfilePin(profileId: Int, currentPin: String? = null, onComplete: (Boolean) -> Unit) {
+    fun clearProfilePin(profileId: String, currentPin: String? = null, onComplete: (Boolean) -> Unit) {
         if (_isPinOperationInProgress.value) return
         viewModelScope.launch {
             _isPinOperationInProgress.value = true
@@ -286,7 +286,7 @@ class ProfileSelectionViewModel @Inject constructor(
         }
     }
 
-    fun verifyProfilePin(profileId: Int, pin: String, onComplete: (Result<SupabaseProfilePinVerifyResult>) -> Unit) {
+    fun verifyProfilePin(profileId: String, pin: String, onComplete: (Result<SupabaseProfilePinVerifyResult>) -> Unit) {
         if (_isPinOperationInProgress.value) return
         viewModelScope.launch {
             _isPinOperationInProgress.value = true

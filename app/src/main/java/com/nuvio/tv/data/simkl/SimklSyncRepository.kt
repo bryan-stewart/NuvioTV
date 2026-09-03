@@ -34,7 +34,7 @@ class SimklSyncRepository @Inject constructor(
     private val refreshGate = SimklRefreshGate()
     private val _state = MutableStateFlow(SimklSyncState())
     private val _projection = MutableStateFlow(SimklSnapshotProjection.Empty)
-    private var loadedProfileId: Int? = null
+    private var loadedProfileId: String? = null
     private var profileGeneration = 0L
 
     val state: StateFlow<SimklSyncState> = _state.asStateFlow()
@@ -97,7 +97,7 @@ class SimklSyncRepository @Inject constructor(
         }
     }
 
-    suspend fun removeProfile(profileId: Int) = withContext(Dispatchers.IO) {
+    suspend fun removeProfile(profileId: String) = withContext(Dispatchers.IO) {
         if (profileId == profileManager.activeProfileId.value) {
             clearCurrentProfile()
         } else {
@@ -165,7 +165,7 @@ class SimklSyncRepository @Inject constructor(
         }
     }
 
-    private suspend fun loadProfile(profileId: Int) = loadMutex.withLock {
+    private suspend fun loadProfile(profileId: String) = loadMutex.withLock {
         if (loadedProfileId == profileId) return@withLock
         val snapshot = storage.load(profileId)
             ?.trim()
@@ -184,7 +184,7 @@ class SimklSyncRepository @Inject constructor(
         }
     }
 
-    private suspend fun refreshSnapshot(profileId: Int, generation: Long) = snapshotMutex.withLock {
+    private suspend fun refreshSnapshot(profileId: String, generation: Long) = snapshotMutex.withLock {
         val previous = _state.value
         _state.value = previous.copy(isLoading = true, errorMessage = null)
         val result = try {
@@ -220,7 +220,7 @@ class SimklSyncRepository @Inject constructor(
         }
     }
 
-    private fun isCurrent(profileId: Int, generation: Long): Boolean =
+    private fun isCurrent(profileId: String, generation: Long): Boolean =
         profileId == profileManager.activeProfileId.value && generation == profileGeneration
 
     fun invalidateProjections(animeIdPreference: SimklAnimeIdPreference? = null) {

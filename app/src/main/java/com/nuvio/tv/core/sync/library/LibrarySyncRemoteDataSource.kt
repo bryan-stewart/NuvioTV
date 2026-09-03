@@ -6,25 +6,25 @@ import com.nuvio.tv.domain.model.SavedLibraryItem
 
 interface LibrarySyncRemoteDataSource {
     suspend fun pullSnapshot(
-        profileId: Int,
+        profileId: String,
         pageSize: Int
     ): List<SavedLibraryItem>
 
-    suspend fun getDeltaCursor(profileId: Int): Long
+    suspend fun getDeltaCursor(profileId: String): Long
 
     suspend fun pullDelta(
-        profileId: Int,
+        profileId: String,
         sinceEventId: Long,
         limit: Int
     ): List<LibraryDeltaEvent>
 
     suspend fun pushItems(
-        profileId: Int,
+        profileId: String,
         items: Collection<SavedLibraryItem>
     )
 
     suspend fun deleteItems(
-        profileId: Int,
+        profileId: String,
         keys: Collection<LibrarySyncKey>
     )
 }

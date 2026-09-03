@@ -57,7 +57,7 @@ class TraktSettingsDataStore @Inject constructor(
         const val MAX_CONTINUE_WATCHING_DAYS_CAP = 365
     }
 
-    private fun store(profileId: Int = profileManager.activeProfileId.value) =
+    private fun store(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, FEATURE)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

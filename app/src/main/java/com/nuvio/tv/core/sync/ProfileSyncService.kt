@@ -116,9 +116,11 @@ class ProfileSyncService @Inject constructor(
 
                 val profiles = remote.map { entry ->
                     UserProfile(
-                        id = entry.profileIndex,
+                        id = entry.profileId,
                         name = entry.name,
                         avatarColorHex = entry.avatarColorHex,
+                        isManager = entry.isManager,
+                        order = entry.profileIndex,
                         usesPrimaryAddons = entry.usesPrimaryAddons,
                         usesPrimaryPlugins = entry.usesPrimaryPlugins,
                         avatarId = entry.avatarId,
@@ -149,7 +151,7 @@ class ProfileSyncService @Inject constructor(
         }
     }
 
-    suspend fun deleteProfileData(profileId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun deleteProfileData(profileId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val params = buildJsonObject {
                 put("p_profile_id", profileId)
@@ -167,13 +169,13 @@ class ProfileSyncService @Inject constructor(
         }
     }
 
-    suspend fun pullProfileLockStates(): Result<Map<Int, Boolean>> = withContext(Dispatchers.IO) {
+    suspend fun pullProfileLockStates(): Result<Map<String, Boolean>> = withContext(Dispatchers.IO) {
         try {
             val response = withJwtRefreshRetry {
                 postgrest.rpc("sync_pull_profile_locks")
             }
             val remote = response.decodeList<SupabaseProfileLockState>()
-            val result = remote.associate { it.profileIndex to it.pinEnabled }
+            val result = remote.associate { it.profileIndex.toString() to it.pinEnabled }
             Result.success(result)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to pull profile lock states", e)
@@ -181,7 +183,7 @@ class ProfileSyncService @Inject constructor(
         }
     }
 
-    suspend fun setProfilePin(profileId: Int, pin: String, currentPin: String? = null): SetProfilePinResult = withContext(Dispatchers.IO) {
+    suspend fun setProfilePin(profileId: String, pin: String, currentPin: String? = null): SetProfilePinResult = withContext(Dispatchers.IO) {
         try {
             val params = buildJsonObject {
                 put("p_profile_id", profileId)
@@ -207,7 +209,7 @@ class ProfileSyncService @Inject constructor(
     private fun isCurrentPinRequiredError(e: Throwable): Boolean =
         e.message?.contains("Current PIN is required", ignoreCase = true) == true
 
-    suspend fun clearProfilePin(profileId: Int, currentPin: String? = null): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun clearProfilePin(profileId: String, currentPin: String? = null): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val params = buildJsonObject {
                 put("p_profile_id", profileId)
@@ -225,7 +227,7 @@ class ProfileSyncService @Inject constructor(
         }
     }
 
-    suspend fun verifyProfilePin(profileId: Int, pin: String): Result<SupabaseProfilePinVerifyResult> = withContext(Dispatchers.IO) {
+    suspend fun verifyProfilePin(profileId: String, pin: String): Result<SupabaseProfilePinVerifyResult> = withContext(Dispatchers.IO) {
         try {
             val params = buildJsonObject {
                 put("p_profile_id", profileId)

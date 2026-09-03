@@ -26,9 +26,9 @@ class StartupSyncPreferences @Inject constructor(
     private val lastFullPullAtMsKey = longPreferencesKey("last_full_pull_at_ms")
     private val lastFullPullIncludedProfileSettingsKey = booleanPreferencesKey("last_full_pull_included_profile_settings")
 
-    private fun store(profileId: Int) = factory.get(profileId, FEATURE)
+    private fun store(profileId: String) = factory.get(profileId, FEATURE)
 
-    suspend fun getState(profileId: Int): StartupSyncState {
+    suspend fun getState(profileId: String): StartupSyncState {
         val prefs = store(profileId).data.first()
         return StartupSyncState(
             lastFullPullUserId = prefs[lastFullPullUserIdKey],
@@ -38,7 +38,7 @@ class StartupSyncPreferences @Inject constructor(
     }
 
     suspend fun markFullPull(
-        profileId: Int,
+        profileId: String,
         userId: String,
         includeProfileSettings: Boolean
     ) {

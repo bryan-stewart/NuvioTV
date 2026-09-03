@@ -1541,7 +1541,7 @@ private suspend fun HomeViewModel.buildLightweightNextUpItems(
 private suspend fun HomeViewModel.enrichVisibleContinueWatchingItems(
     finalItems: List<ContinueWatchingItem>,
     debug: CwDebugSession? = null,
-    pipelineProfileId: Int
+    pipelineProfileId: String
 ): Boolean = coroutineScope {
     if (finalItems.isEmpty()) return@coroutineScope false
 
@@ -2551,7 +2551,7 @@ private fun buildNextUpSeedCacheKey(
 private fun HomeViewModel.persistLocalContinueWatchingMetadata(
     originalItems: List<ContinueWatchingItem>,
     enrichedItems: List<ContinueWatchingItem>,
-    pipelineProfileId: Int
+    pipelineProfileId: String
 ) {
     val localItems = enrichedItems.indices.mapNotNull { index ->
         val original = originalItems.getOrNull(index) as? ContinueWatchingItem.InProgress ?: return@mapNotNull null

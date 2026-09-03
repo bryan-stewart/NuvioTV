@@ -66,7 +66,7 @@ import javax.inject.Singleton
 private const val REMOTE_PROGRESS_WRITE_DEDUP_WINDOW_MS = 5_000L
 
 private data class RemoteProgressWriteKey(
-    val profileId: Int,
+    val profileId: String,
     val progressKey: String
 )
 
@@ -82,7 +82,7 @@ internal class RemoteProgressWriteDeduplicator(
     private val recentWrites = mutableMapOf<RemoteProgressWriteKey, RemoteProgressWrite>()
 
     fun shouldSend(
-        profileId: Int,
+        profileId: String,
         progressKey: String,
         progress: WatchProgress,
         nowMs: Long
@@ -177,7 +177,7 @@ class WatchProgressRepositoryImpl @Inject constructor(
     private val inFlightMetadataKeys = mutableSetOf<String>()
     private val metadataHydrationLimit = 30
 
-    private fun triggerRemoteSync(profileId: Int = profileManager.activeProfileId.value) {
+    private fun triggerRemoteSync(profileId: String = profileManager.activeProfileId.value) {
         if (isSyncingFromRemote) return
         if (!hasCompletedInitialPull) return
         if (!authManager.isAuthenticated) return
@@ -192,7 +192,7 @@ class WatchProgressRepositoryImpl @Inject constructor(
 
     private fun triggerWatchedItemsSync(
         items: Collection<WatchedItem>,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ) {
         if (items.isEmpty()) return
         if (isSyncingFromRemote) return
@@ -950,7 +950,7 @@ class WatchProgressRepositoryImpl @Inject constructor(
         )
 
     private suspend fun broadcastHistoryAdd(
-        profileId: Int,
+        profileId: String,
         items: Collection<TrackingHistoryItem>
     ) {
         if (items.isEmpty()) return
@@ -971,7 +971,7 @@ class WatchProgressRepositoryImpl @Inject constructor(
     }
 
     private suspend fun broadcastHistoryRemoval(
-        profileId: Int,
+        profileId: String,
         items: Collection<TrackingMediaReference>
     ) {
         if (items.isEmpty()) return
@@ -1101,7 +1101,7 @@ class WatchProgressRepositoryImpl @Inject constructor(
         contentId: String,
         season: Int?,
         episode: Int?,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ): List<String> {
         val rawEntries = watchProgressPreferences.getAllRawEntries(profileId)
         val keys = if (season != null && episode != null) {

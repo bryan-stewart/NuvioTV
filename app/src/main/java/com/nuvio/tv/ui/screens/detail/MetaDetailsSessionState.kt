@@ -8,7 +8,7 @@ import javax.inject.Singleton
 @Singleton
 class MetaDetailsSessionState @Inject constructor() {
     private data class CacheKey(
-        val profileId: Int,
+        val profileId: String,
         val progressSource: String,
         val contentId: String,
         val contentType: String
@@ -17,7 +17,7 @@ class MetaDetailsSessionState @Inject constructor() {
     private val nextToWatchCache = ConcurrentHashMap<CacheKey, NextToWatch>()
 
     fun getNextToWatch(
-        profileId: Int,
+        profileId: String,
         progressSource: String,
         contentId: String,
         contentType: String
@@ -29,7 +29,7 @@ class MetaDetailsSessionState @Inject constructor() {
     )]
 
     fun putNextToWatch(
-        profileId: Int,
+        profileId: String,
         progressSource: String,
         contentId: String,
         contentType: String,
@@ -44,7 +44,7 @@ class MetaDetailsSessionState @Inject constructor() {
     }
 
     private fun cacheKey(
-        profileId: Int,
+        profileId: String,
         progressSource: String,
         contentId: String,
         contentType: String

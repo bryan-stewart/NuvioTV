@@ -381,7 +381,7 @@ open class MainActivity : ComponentActivity() {
             val activeProfile = remember(activeProfileId, profiles) {
                 profiles.firstOrNull { it.id == activeProfileId }
             }
-            var profilePinStates by remember { mutableStateOf<Map<Int, Boolean>>(emptyMap()) }
+            var profilePinStates by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
 
             LaunchedEffect(authState, profiles) {
                 if (authState is AuthState.FullAccount) {

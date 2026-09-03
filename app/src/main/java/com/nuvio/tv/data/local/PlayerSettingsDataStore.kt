@@ -473,7 +473,7 @@ class PlayerSettingsDataStore @Inject constructor(
         private const val CENTER_MIX_LEVEL_DB_MAX = 30
     }
 
-    private fun store(profileId: Int = profileManager.activeProfileId.value) =
+    private fun store(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, FEATURE)
 
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -610,7 +610,7 @@ class PlayerSettingsDataStore @Inject constructor(
         }
     }
 
-    private suspend fun migrateProfile(profileId: Int) {
+    private suspend fun migrateProfile(profileId: String) {
         factory.get(profileId, FEATURE).edit { prefs ->
                 val loadControlMigrated = prefs[migrationLoadControlDefaultsAlignedDoneKey] ?: false
                 if (!loadControlMigrated) {

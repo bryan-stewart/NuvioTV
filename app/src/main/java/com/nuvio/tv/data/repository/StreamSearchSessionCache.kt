@@ -21,7 +21,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 internal data class StreamSearchRequestKey(
-    val profileId: Int,
+    val profileId: String,
     val type: String,
     val videoId: String,
     val season: Int?,

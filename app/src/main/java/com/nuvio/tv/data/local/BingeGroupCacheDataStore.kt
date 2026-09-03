@@ -24,7 +24,7 @@ class BingeGroupCacheDataStore @Inject constructor(
         private const val FEATURE = "binge_group_cache"
     }
 
-    private fun store(profileId: Int = profileManager.activeProfileId.value) =
+    private fun store(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, FEATURE)
 
     private fun prefKey(contentId: String) = stringPreferencesKey("bg_$contentId")

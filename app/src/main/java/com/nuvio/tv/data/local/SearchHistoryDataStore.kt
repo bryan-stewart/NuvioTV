@@ -22,7 +22,7 @@ class SearchHistoryDataStore @Inject constructor(
         private const val DEFAULT_MAX_RECENT_SEARCHES = 8
     }
 
-    private fun store(profileId: Int = profileManager.activeProfileId.value) =
+    private fun store(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, FEATURE)
 
     private val gson = Gson()

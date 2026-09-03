@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -23,9 +23,14 @@ class ProfileSettingsViewModel @Inject constructor(
 
     val profiles: StateFlow<List<UserProfile>> = profileManager.profiles
 
-    val isPrimaryProfileActive: StateFlow<Boolean> = profileManager.activeProfileId
-        .map { it == 1 }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    // Was "activeProfileId == 1" — a real household has no numbered primary
+    // slot, so this reflects whoever the backend says manages the household.
+    val isPrimaryProfileActive: StateFlow<Boolean> = combine(
+        profileManager.activeProfileId,
+        profileManager.profiles
+    ) { activeId, profiles ->
+        profiles.firstOrNull { it.id == activeId }?.isManager == true
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     val canAddProfile: Boolean
         get() = profileManager.canCreateProfile
@@ -70,7 +75,7 @@ class ProfileSettingsViewModel @Inject constructor(
         }
     }
 
-    fun deleteProfile(id: Int) {
+    fun deleteProfile(id: String) {
         viewModelScope.launch {
             profileManager.deleteProfile(id)
             profileSyncService.deleteProfileData(id)

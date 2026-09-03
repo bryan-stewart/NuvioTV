@@ -24,7 +24,7 @@ internal data class ProviderCredentialValue(
 }
 
 internal data class ProviderCredentialSnapshot(
-    val profileId: Int,
+    val profileId: String,
     val values: List<ProviderCredentialValue>
 ) {
     init {

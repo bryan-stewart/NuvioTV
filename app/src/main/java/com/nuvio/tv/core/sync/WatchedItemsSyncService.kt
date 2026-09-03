@@ -66,7 +66,7 @@ class WatchedItemsSyncService @Inject constructor(
      */
     private val syncPoints = ConcurrentHashMap<Int, Long>()
 
-    private fun syncPointFor(profileId: Int): Long = syncPoints[profileId] ?: 0L
+    private fun syncPointFor(profileId: String): Long = syncPoints[profileId] ?: 0L
 
     /**
      * @param syncPointMs when the pushed items were read, not when the upload finished.
@@ -74,7 +74,7 @@ class WatchedItemsSyncService @Inject constructor(
      * stamping the finish time would mark it as already synced and the next pull would
      * delete it for never showing up in the remote response.
      */
-    suspend fun markPushSucceeded(profileId: Int, syncPointMs: Long) {
+    suspend fun markPushSucceeded(profileId: String, syncPointMs: Long) {
         // A push never moves its own profile's point backwards: one that read older data
         // can still finish last, and its stamp would otherwise retract a newer push's
         // claim. This is about competing pushes only. Restore below is exempt.
@@ -101,7 +101,7 @@ class WatchedItemsSyncService @Inject constructor(
      * has no push boundary at all, so a max would let the new profile inherit one it
      * never earned and delete its own unsynced entries on first pull.
      */
-    suspend fun restoreLastPushTimestamp(profileId: Int = profileManager.activeProfileId.value) {
+    suspend fun restoreLastPushTimestamp(profileId: String = profileManager.activeProfileId.value) {
         syncPoints[profileId] = watchedItemsPreferences.getLastSuccessfulPushMs(profileId)
     }
 
@@ -120,7 +120,7 @@ class WatchedItemsSyncService @Inject constructor(
         return trackingProviderRegistry.provider(providerId)?.isAuthenticated?.first() != true
     }
 
-    private suspend fun fetchDeltaCursor(profileId: Int): Long {
+    private suspend fun fetchDeltaCursor(profileId: String): Long {
         Log.d(TAG, "fetchDeltaCursor: requesting cursor for profile $profileId")
         val params = buildJsonObject {
             put("p_profile_id", profileId)
@@ -132,7 +132,7 @@ class WatchedItemsSyncService @Inject constructor(
         }
     }
 
-    private suspend fun pullDeltaPage(profileId: Int, cursor: Long): List<SupabaseWatchedItemEvent> {
+    private suspend fun pullDeltaPage(profileId: String, cursor: Long): List<SupabaseWatchedItemEvent> {
         Log.d(TAG, "pullDeltaPage: requesting events after cursor $cursor for profile $profileId limit=$WATCHED_ITEMS_DELTA_PAGE_SIZE")
         val params = buildJsonObject {
             put("p_profile_id", profileId)
@@ -150,7 +150,7 @@ class WatchedItemsSyncService @Inject constructor(
         }
     }
 
-    suspend fun pushToRemote(profileId: Int = profileManager.activeProfileId.value): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun pushToRemote(profileId: String = profileManager.activeProfileId.value): Result<Unit> = withContext(Dispatchers.IO) {
         pushMutex.withLock {
             try {
                 val syncPointMs = System.currentTimeMillis()
@@ -173,7 +173,7 @@ class WatchedItemsSyncService @Inject constructor(
      */
     suspend fun pushItemsToRemote(
         items: Collection<WatchedItem>,
-        profileId: Int = profileManager.activeProfileId.value,
+        profileId: String = profileManager.activeProfileId.value,
         syncPointMs: Long? = null
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -213,7 +213,7 @@ class WatchedItemsSyncService @Inject constructor(
     }
 
     suspend fun pullFromRemote(
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ): Result<List<WatchedItem>> = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "pullFromRemote: starting full watched items snapshot for profile $profileId")
@@ -261,7 +261,7 @@ class WatchedItemsSyncService @Inject constructor(
     }
 
     suspend fun syncDeltaFromRemote(
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ): Result<WatchedItemsRemoteSyncResult> = withContext(Dispatchers.IO) {
         deltaSyncMutex.withLock {
             syncDeltaFromRemoteLocked(profileId)
@@ -269,7 +269,7 @@ class WatchedItemsSyncService @Inject constructor(
     }
 
     suspend fun syncSnapshotFromRemote(
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ): Result<WatchedItemsRemoteSyncResult> = withContext(Dispatchers.IO) {
         deltaSyncMutex.withLock {
             syncSnapshotFromRemoteLocked(profileId)
@@ -277,7 +277,7 @@ class WatchedItemsSyncService @Inject constructor(
     }
 
     private suspend fun syncSnapshotFromRemoteLocked(
-        profileId: Int
+        profileId: String
     ): Result<WatchedItemsRemoteSyncResult> {
         return try {
             if (!shouldUseSupabaseWatchProgressSync()) {
@@ -302,7 +302,7 @@ class WatchedItemsSyncService @Inject constructor(
     }
 
     private suspend fun syncDeltaFromRemoteLocked(
-        profileId: Int
+        profileId: String
     ): Result<WatchedItemsRemoteSyncResult> {
         return try {
             val deltaInitialized = watchedItemsPreferences.isDeltaInitialized(profileId)
@@ -397,7 +397,7 @@ class WatchedItemsSyncService @Inject constructor(
     }
 
     private suspend fun pullSnapshotFromRemote(
-        profileId: Int,
+        profileId: String,
         resetDeltaState: Boolean
     ): WatchedItemsRemoteSyncResult {
         val remoteWatchedItems = pullFromRemote(profileId).getOrElse { throw it }
@@ -424,7 +424,7 @@ class WatchedItemsSyncService @Inject constructor(
         contentId: String,
         season: Int?,
         episode: Int?,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val params = buildJsonObject {
@@ -453,7 +453,7 @@ class WatchedItemsSyncService @Inject constructor(
     suspend fun deleteFromRemoteBatch(
         contentId: String,
         episodes: List<Pair<Int, Int>>,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             if (episodes.isEmpty()) return@withContext Result.success(Unit)

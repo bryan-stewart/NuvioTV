@@ -256,8 +256,8 @@ class ProfileSettingsSyncService @Inject constructor(
     }
 
     suspend fun copyProfileSetup(
-        sourceProfileId: Int,
-        targetProfileId: Int,
+        sourceProfileId: String,
+        targetProfileId: String,
         copyProviderCredentials: Boolean = false
     ): Result<Unit> =
         withContext(Dispatchers.IO) {
@@ -369,7 +369,7 @@ class ProfileSettingsSyncService @Inject constructor(
     }
 
     private suspend fun pushProfileToRemote(
-        profileId: Int,
+        profileId: String,
         settingsJson: JsonObject? = null
     ) {
         val resolvedSettingsJson = settingsJson ?: exportSettingsBlob(profileId)
@@ -384,7 +384,7 @@ class ProfileSettingsSyncService @Inject constructor(
         }
     }
 
-    private suspend fun pullProfileFromRemote(profileId: Int): JsonObject? {
+    private suspend fun pullProfileFromRemote(profileId: String): JsonObject? {
         val params = buildJsonObject {
             put("p_profile_id", profileId)
             put("p_platform", SETTINGS_SYNC_PLATFORM)
@@ -396,7 +396,7 @@ class ProfileSettingsSyncService @Inject constructor(
     }
 
     private suspend fun applySettingsBlob(
-        profileId: Int,
+        profileId: String,
         featuresJson: JsonObject,
         signature: String
     ) {
@@ -417,7 +417,7 @@ class ProfileSettingsSyncService @Inject constructor(
         }
     }
 
-    private suspend fun copyProviderCredentialsLocally(sourceProfileId: Int, targetProfileId: Int) {
+    private suspend fun copyProviderCredentialsLocally(sourceProfileId: String, targetProfileId: String) {
         credentialProfileSettingsKeys.forEach { (feature, keyNames) ->
             val sourcePreferences = profileDataStoreFactory.get(sourceProfileId, feature).data.first()
             profileDataStoreFactory.get(targetProfileId, feature).edit { targetPreferences ->
@@ -433,7 +433,7 @@ class ProfileSettingsSyncService @Inject constructor(
         }
     }
 
-    private suspend fun exportSettingsBlob(profileId: Int): JsonObject {
+    private suspend fun exportSettingsBlob(profileId: String): JsonObject {
         val features = buildJsonObject {
             syncedFeatures.forEach { feature ->
                 val prefs = profileDataStoreFactory.get(profileId, feature).data.first()
@@ -454,7 +454,7 @@ class ProfileSettingsSyncService @Inject constructor(
         }
     }
 
-    private suspend fun importSettingsBlob(profileId: Int, featuresJson: JsonObject) {
+    private suspend fun importSettingsBlob(profileId: String, featuresJson: JsonObject) {
         applyingRemoteBlob = true
         try {
             syncedFeatures.forEach { feature ->
@@ -561,7 +561,7 @@ class ProfileSettingsSyncService @Inject constructor(
         }
     }
 
-    private suspend fun buildSettingsSignature(profileId: Int): String {
+    private suspend fun buildSettingsSignature(profileId: String): String {
         val signatures = ArrayList<String>(syncedFeatures.size)
         syncedFeatures.forEach { feature ->
             val prefs = profileDataStoreFactory.get(profileId, feature).data.first()

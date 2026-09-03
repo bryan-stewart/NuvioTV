@@ -56,13 +56,13 @@ interface TrackingListWriter {
     val providerId: TrackingProviderId
 
     suspend fun moveToList(
-        profileId: Int,
+        profileId: String,
         items: Collection<TrackingMediaReference>,
         destination: TrackingListStatus
     ): TrackingMutationResult
 
     suspend fun removeFromList(
-        profileId: Int,
+        profileId: String,
         items: Collection<TrackingMediaReference>
     ): TrackingMutationResult
 }
@@ -71,12 +71,12 @@ interface TrackingHistoryWriter {
     val providerId: TrackingProviderId
 
     suspend fun addToHistory(
-        profileId: Int,
+        profileId: String,
         items: Collection<TrackingHistoryItem>
     ): TrackingMutationResult
 
     suspend fun removeFromHistory(
-        profileId: Int,
+        profileId: String,
         items: Collection<TrackingMediaReference>
     ): TrackingMutationResult
 }

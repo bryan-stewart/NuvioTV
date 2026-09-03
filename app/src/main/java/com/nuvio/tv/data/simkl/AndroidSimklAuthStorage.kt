@@ -37,12 +37,12 @@ class AndroidSimklAuthStorage @Inject constructor(
     private val _state = MutableStateFlow(SimklAuthState())
     private val stateLock = Any()
     @Volatile
-    private var activeCredentials = ActiveCredentials(profileId = 1, generation = 0L, accessToken = null)
+    private var activeCredentials = ActiveCredentials(profileId = "", generation = 0L, accessToken = null)
 
     override val state: StateFlow<SimklAuthState> = _state.asStateFlow()
 
     init {
-        load(1)
+        load("")
         scope.launch {
             profileDataStore.activeProfileId
                 .distinctUntilChanged()
@@ -131,7 +131,7 @@ class AndroidSimklAuthStorage @Inject constructor(
         true
     }
 
-    override fun removeProfile(profileId: Int) {
+    override fun removeProfile(profileId: String) {
         preferences.edit()
             .remove(profileKey(METADATA_KEY, profileId))
             .remove(profileKey(TOKEN_KEY, profileId))
@@ -154,7 +154,7 @@ class AndroidSimklAuthStorage @Inject constructor(
         }
     }
 
-    private fun load(profileId: Int) {
+    private fun load(profileId: String) {
         val metadata = preferences.getString(profileKey(METADATA_KEY, profileId), null)
             ?.let { runCatching { json.decodeFromString<SimklStoredAuthMetadata>(it) }.getOrNull() }
             ?: SimklStoredAuthMetadata()
@@ -194,13 +194,13 @@ class AndroidSimklAuthStorage @Inject constructor(
         )
     }
 
-    private fun saveMetadata(metadata: SimklStoredAuthMetadata, profileId: Int) {
+    private fun saveMetadata(metadata: SimklStoredAuthMetadata, profileId: String) {
         preferences.edit()
             .putString(profileKey(METADATA_KEY, profileId), json.encodeToString(metadata))
             .apply()
     }
 
-    private fun loadEncrypted(key: String, profileId: Int): String? {
+    private fun loadEncrypted(key: String, profileId: String): String? {
         val scopedKey = profileKey(key, profileId)
         val stored = preferences.getString(scopedKey, null) ?: return null
         return runCatching { decrypt(stored) }
@@ -208,7 +208,7 @@ class AndroidSimklAuthStorage @Inject constructor(
             .getOrNull()
     }
 
-    private fun saveEncrypted(key: String, value: String?, profileId: Int) {
+    private fun saveEncrypted(key: String, value: String?, profileId: String) {
         val scopedKey = profileKey(key, profileId)
         val editor = preferences.edit()
         if (value.isNullOrBlank()) editor.remove(scopedKey) else editor.putString(scopedKey, encrypt(value))
@@ -260,14 +260,14 @@ class AndroidSimklAuthStorage @Inject constructor(
         }
     }
 
-    private fun profileKey(key: String, profileId: Int): String = "$key.p$profileId"
+    private fun profileKey(key: String, profileId: String): String = "$key.p$profileId"
 
     private fun ByteArray.toBase64(): String = Base64.encodeToString(this, Base64.NO_WRAP)
 
     private fun String.fromBase64(): ByteArray = Base64.decode(this, Base64.NO_WRAP)
 
     private data class ActiveCredentials(
-        val profileId: Int,
+        val profileId: String,
         val generation: Long,
         val accessToken: String?
     ) {

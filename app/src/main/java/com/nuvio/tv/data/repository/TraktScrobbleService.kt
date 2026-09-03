@@ -52,7 +52,7 @@ class TraktScrobbleService @Inject constructor(
     }
 
     private data class ScrobbleStamp(
-        val profileId: Int,
+        val profileId: String,
         val action: String,
         val itemKey: String,
         val progress: Float,
@@ -187,7 +187,7 @@ class TraktScrobbleService @Inject constructor(
         }
     }
 
-    private fun shouldSkip(profileId: Int, action: String, itemKey: String, progress: Float): Boolean {
+    private fun shouldSkip(profileId: String, action: String, itemKey: String, progress: Float): Boolean {
         val last = lastScrobbleStamp ?: return false
         val now = System.currentTimeMillis()
         val isSameWindow = now - last.timestampMs < minSendIntervalMs

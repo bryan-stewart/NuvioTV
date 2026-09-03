@@ -1,7 +1,6 @@
 package com.nuvio.tv.core.profile
 
 import android.content.Context
-import com.nuvio.tv.R
 import com.nuvio.tv.data.local.ProfileDataStore
 import com.nuvio.tv.data.local.ProfileDataStoreFactory
 import com.nuvio.tv.domain.model.UserProfile
@@ -12,7 +11,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.io.File
@@ -27,16 +25,23 @@ class ProfileManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     companion object {
+        // Soft UI cap only now — the backend doesn't enforce a household
+        // size limit, this is just how many tiles the profile-selection
+        // screen was designed around.
         const val MAX_PROFILES = 6
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    val activeProfileId: StateFlow<Int> = profileDataStore.activeProfileId
-        .stateIn(scope, SharingStarted.Eagerly, 1)
+    // Real household members only, sourced from the backend (see
+    // ProfileSyncService.pullFromRemote) — never locally authored. ""
+    // means "not yet resolved" (no sync has completed since sign-in),
+    // never a real profile.
+    val activeProfileId: StateFlow<String> = profileDataStore.activeProfileId
+        .stateIn(scope, SharingStarted.Eagerly, "")
 
     val activeProfileReady: StateFlow<Boolean> = profileDataStore.activeProfileId
-        .map { true }
+        .map { it.isNotBlank() }
         .stateIn(scope, SharingStarted.Eagerly, false)
 
     val hasEverSelectedProfile: StateFlow<Boolean> = profileDataStore.hasEverSelectedProfile
@@ -49,20 +54,21 @@ class ProfileManager @Inject constructor(
         .stateIn(scope, SharingStarted.Eagerly, false)
 
     val profiles: StateFlow<List<UserProfile>> = profileDataStore.profilesList
-        .stateIn(scope, SharingStarted.Eagerly, listOf(
-            UserProfile(id = 1, name = context.getString(R.string.profile_default_name, 1), avatarColorHex = "#1E88E5")
-        ))
+        .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     val activeProfile: UserProfile?
         get() = profiles.value.find { it.id == activeProfileId.value }
 
+    // Was "id == 1" — a real household has no notion of a numbered
+    // primary slot, so this now reflects who the backend says manages
+    // the household.
     val isPrimaryProfileActive: Boolean
-        get() = activeProfileId.value == 1
+        get() = activeProfile?.isManager == true
 
     val canCreateProfile: Boolean
         get() = profiles.value.size < MAX_PROFILES
 
-    suspend fun setActiveProfile(id: Int) {
+    suspend fun setActiveProfile(id: String) {
         val exists = profiles.value.any { it.id == id }
         if (exists) {
             profileDataStore.setActiveProfile(id)
@@ -77,6 +83,13 @@ class ProfileManager @Inject constructor(
         profileDataStore.setConfirmExitEnabled(enabled)
     }
 
+    // Profile creation/update/delete now need a real round-trip to the
+    // backend (create_household_profile / update_my_profile /
+    // remove_household_member+delete_profile) instead of just mutating a
+    // locally-authored list — not wired yet (see the phased plan). Stubbed
+    // as clean no-ops for now rather than silently touching local state
+    // the next sync would just overwrite anyway; callers already handle a
+    // null/false result as a failure.
     suspend fun createProfile(
         name: String,
         avatarColorHex: String,
@@ -84,45 +97,25 @@ class ProfileManager @Inject constructor(
         usesPrimaryPlugins: Boolean = false,
         avatarId: String? = null
     ): UserProfile? {
-        val current = profiles.value
-        if (current.size >= MAX_PROFILES) return null
-
-        val usedIds = current.map { it.id }.toSet()
-        val nextId = (2..MAX_PROFILES).firstOrNull { it !in usedIds } ?: return null
-
-        val profile = UserProfile(
-            id = nextId,
-            name = name.trim().ifEmpty { context.getString(R.string.profile_default_name, nextId) },
-            avatarColorHex = avatarColorHex,
-            usesPrimaryAddons = usesPrimaryAddons,
-            usesPrimaryPlugins = usesPrimaryPlugins,
-            avatarId = avatarId
-        )
-        factory.markProfileCreated(nextId)
-        profileDataStore.upsertProfile(profile)
-        profiles.first { entries -> entries.any { it.id == nextId } }
-        return profile
+        return null
     }
 
-    suspend fun deleteProfile(id: Int): Boolean {
-        if (id == 1) return false
-        if (profiles.value.none { it.id == id }) return false
-        credentialStores.forEach { store -> store.removeProfile(id) }
-        deleteProfileDataAsync(id)
-        profileDataStore.deleteProfile(id)
-        return true
+    suspend fun deleteProfile(id: String): Boolean {
+        return false
     }
 
     suspend fun updateProfile(profile: UserProfile): Boolean {
-        if (profiles.value.none { it.id == profile.id }) return false
-        profileDataStore.upsertProfile(profile)
-        return true
+        return false
     }
 
-    private suspend fun deleteProfileDataAsync(profileId: Int) = withContext(Dispatchers.IO) {
-        if (profileId == 1) return@withContext
+    // Unused until deleteProfile is wired for real (step 3) — kept ready
+    // rather than rewritten from scratch later. Clears this profile's own
+    // local cache files; never the caller's own data.
+    private suspend fun deleteProfileDataAsync(profileId: String) = withContext(Dispatchers.IO) {
+        if (profileId.isBlank()) return@withContext
 
         factory.clearProfile(profileId)
+        credentialStores.forEach { store -> store.removeProfile(profileId) }
 
         val suffixWithExtension = "_p${profileId}.preferences_pb"
         val dataStoreDir = File(context.filesDir, "datastore")

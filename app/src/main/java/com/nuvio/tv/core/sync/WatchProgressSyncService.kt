@@ -66,7 +66,7 @@ class WatchProgressSyncService @Inject constructor(
      */
     private val syncPoints = ConcurrentHashMap<Int, Long>()
 
-    private fun syncPointFor(profileId: Int): Long = syncPoints[profileId] ?: 0L
+    private fun syncPointFor(profileId: String): Long = syncPoints[profileId] ?: 0L
 
     /**
      * Records the sync point after a successful push.
@@ -76,7 +76,7 @@ class WatchProgressSyncService @Inject constructor(
      * stamping the finish time would mark it as already synced and the next pull would
      * delete it for never showing up in the remote response.
      */
-    suspend fun markPushSucceeded(profileId: Int, syncPointMs: Long) {
+    suspend fun markPushSucceeded(profileId: String, syncPointMs: Long) {
         // A push never moves its own profile's point backwards: one that read older data
         // can still finish last, and its stamp would otherwise retract a newer push's
         // claim. This is about competing pushes only. Restore below is exempt.
@@ -103,7 +103,7 @@ class WatchProgressSyncService @Inject constructor(
      * has no push boundary at all, so a max would let the new profile inherit one it
      * never earned and delete its own unsynced entries on first pull.
      */
-    suspend fun restoreLastPushTimestamp(profileId: Int = profileManager.activeProfileId.value) {
+    suspend fun restoreLastPushTimestamp(profileId: String = profileManager.activeProfileId.value) {
         syncPoints[profileId] = watchProgressPreferences.getLastSuccessfulPushMs(profileId)
     }
     private suspend fun <T> withJwtRefreshRetry(block: suspend () -> T): T {
@@ -121,7 +121,7 @@ class WatchProgressSyncService @Inject constructor(
         return trackingProviderRegistry.provider(providerId)?.isAuthenticated?.first() != true
     }
 
-    private suspend fun fetchDeltaCursor(profileId: Int): Long {
+    private suspend fun fetchDeltaCursor(profileId: String): Long {
         Log.d(TAG, "fetchDeltaCursor: requesting cursor for profile $profileId")
         val params = buildJsonObject {
             put("p_profile_id", profileId)
@@ -133,7 +133,7 @@ class WatchProgressSyncService @Inject constructor(
         }
     }
 
-    private suspend fun pullDeltaPage(profileId: Int, cursor: Long): List<SupabaseWatchProgressEvent> {
+    private suspend fun pullDeltaPage(profileId: String, cursor: Long): List<SupabaseWatchProgressEvent> {
         Log.d(TAG, "pullDeltaPage: requesting progress events after cursor $cursor for profile $profileId limit=$WATCH_PROGRESS_DELTA_PAGE_SIZE")
         val params = buildJsonObject {
             put("p_profile_id", profileId)
@@ -153,7 +153,7 @@ class WatchProgressSyncService @Inject constructor(
 
     suspend fun deleteFromRemote(
         keys: Collection<String>,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val distinctKeys = keys
@@ -191,7 +191,7 @@ class WatchProgressSyncService @Inject constructor(
      *   prevent race conditions when the active profile changes mid-operation.
      */
     suspend fun pushToRemote(
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ): Result<Unit> = withContext(Dispatchers.IO) {
         pushMutex.withLock {
             try {
@@ -248,7 +248,7 @@ class WatchProgressSyncService @Inject constructor(
     suspend fun pushSingleToRemote(
         key: String,
         progress: WatchProgress,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val params = buildJsonObject {
@@ -294,7 +294,7 @@ class WatchProgressSyncService @Inject constructor(
      *   prevent race conditions when the active profile changes mid-operation.
      */
     suspend fun pullFromRemote(
-        profileId: Int = profileManager.activeProfileId.value,
+        profileId: String = profileManager.activeProfileId.value,
         sinceLastWatched: Long? = null,
         limit: Int? = null
     ): Result<List<Pair<String, WatchProgress>>> = withContext(Dispatchers.IO) {
@@ -352,7 +352,7 @@ class WatchProgressSyncService @Inject constructor(
     }
 
     suspend fun syncDeltaFromRemote(
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ): Result<WatchProgressRemoteSyncResult> = withContext(Dispatchers.IO) {
         deltaSyncMutex.withLock {
             syncDeltaFromRemoteLocked(profileId)
@@ -360,7 +360,7 @@ class WatchProgressSyncService @Inject constructor(
     }
 
     suspend fun syncSnapshotFromRemote(
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ): Result<WatchProgressRemoteSyncResult> = withContext(Dispatchers.IO) {
         deltaSyncMutex.withLock {
             try {
@@ -387,7 +387,7 @@ class WatchProgressSyncService @Inject constructor(
     }
 
     private suspend fun syncDeltaFromRemoteLocked(
-        profileId: Int
+        profileId: String
     ): Result<WatchProgressRemoteSyncResult> {
         return try {
             val deltaInitialized = watchProgressPreferences.isDeltaInitialized(profileId)
@@ -502,7 +502,7 @@ class WatchProgressSyncService @Inject constructor(
     }
 
     private suspend fun pullSnapshotFromRemote(
-        profileId: Int,
+        profileId: String,
         resetDeltaState: Boolean
     ): WatchProgressRemoteSyncResult {
         val remoteEntries = pullFromRemote(profileId).getOrElse { throw it }

@@ -12,7 +12,7 @@ data class AccountConnectedStats(
 )
 
 data class ProfileSyncStats(
-    val profileId: Int,
+    val profileId: String,
     val profileName: String,
     val avatarColorHex: String,
     val addons: Int = 0,

@@ -44,7 +44,7 @@ private const val CLIENT_ID_FIELD = "client_id"
 
 private data class ProviderCredentialScope(
     val userId: String,
-    val profileId: Int
+    val profileId: String
 )
 
 @Singleton
@@ -81,7 +81,7 @@ class ProviderCredentialSyncService @Inject constructor(
     }
 
     suspend fun syncFromRemote(
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ): Result<Boolean> = withContext(Dispatchers.IO) {
         syncMutex.withLock {
             try {
@@ -165,7 +165,7 @@ class ProviderCredentialSyncService @Inject constructor(
         )
     }
 
-    private suspend fun pullRows(profileId: Int): List<SupabaseProviderCredential> {
+    private suspend fun pullRows(profileId: String): List<SupabaseProviderCredential> {
         val params = buildJsonObject {
             put("p_profile_id", profileId)
         }
@@ -188,7 +188,7 @@ class ProviderCredentialSyncService @Inject constructor(
         putSyncOriginClientId(syncClientIdentity)
     }
 
-    private suspend fun currentSnapshot(profileId: Int): ProviderCredentialSnapshot {
+    private suspend fun currentSnapshot(profileId: String): ProviderCredentialSnapshot {
         check(profileManager.activeProfileId.value == profileId)
         val debrid = debridSettingsDataStore.settings.first()
         val mdbList = mdbListSettingsDataStore.settings.first()
@@ -242,7 +242,7 @@ class ProviderCredentialSyncService @Inject constructor(
         }
     }
 
-    private fun currentScope(profileId: Int): ProviderCredentialScope? {
+    private fun currentScope(profileId: String): ProviderCredentialScope? {
         val state = authManager.authState.value as? AuthState.FullAccount ?: return null
         if (profileManager.activeProfileId.value != profileId) return null
         return ProviderCredentialScope(state.userId, profileId)

@@ -90,7 +90,10 @@ class PluginSyncService @Inject constructor(
                 )
 
             val activeProfile = profileManager.activeProfile
-            val profileId = if (activeProfile != null && !activeProfile.isPrimary && activeProfile.usesPrimaryPlugins) 1
+            // Was "-> 1 (the primary slot)" — now the actual Manager's id.
+            val profileId = if (activeProfile != null && !activeProfile.isPrimary && activeProfile.usesPrimaryPlugins)
+                                profileManager.profiles.value.firstOrNull { it.isManager }?.id
+                                    ?: profileManager.activeProfileId.value
                             else profileManager.activeProfileId.value
 
             val remotePlugins = withJwtRefreshRetry {

@@ -22,7 +22,7 @@ class ThemeDataStore @Inject constructor(
         private const val FEATURE = "theme_settings"
     }
 
-    private fun store(profileId: Int = profileManager.activeProfileId.value) =
+    private fun store(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, FEATURE)
 
     private val themeKey = stringPreferencesKey("selected_theme")

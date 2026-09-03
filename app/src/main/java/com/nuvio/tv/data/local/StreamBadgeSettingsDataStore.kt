@@ -40,10 +40,10 @@ class StreamBadgeSettingsDataStore @Inject constructor(
         private const val LEGACY_DEBRID_FEATURE = "debrid_settings"
     }
 
-    private fun store(profileId: Int = profileManager.activeProfileId.value) =
+    private fun store(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, FEATURE)
 
-    private fun legacyDebridStore(profileId: Int = profileManager.activeProfileId.value) =
+    private fun legacyDebridStore(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, LEGACY_DEBRID_FEATURE)
 
     private val streamBadgeRulesKey = stringPreferencesKey("stream_badge_rules")
@@ -100,7 +100,7 @@ class StreamBadgeSettingsDataStore @Inject constructor(
         }
     }
 
-    private suspend fun migrateProfile(profileId: Int) {
+    private suspend fun migrateProfile(profileId: String) {
         val currentPrefs = store(profileId).data.first()
         if (currentPrefs[streamBadgeRulesKey] != null) return
         val legacyPrefs = legacyDebridStore(profileId).data.first()

@@ -826,9 +826,9 @@ private fun ProfileSelectionMainContent(
     screenHint: String,
     isManagementMode: Boolean,
     profiles: List<UserProfile>,
-    activeProfileId: Int,
+    activeProfileId: String,
     canAddProfile: Boolean,
-    profilePinEnabled: Map<Int, Boolean>,
+    profilePinEnabled: Map<String, Boolean>,
     avatarImageUrlsById: Map<String, String>,
     onProfileFocused: (UserProfile?) -> Unit,
     onProfileSelected: (UserProfile) -> Unit,
@@ -897,10 +897,10 @@ private fun ProfileSelectionMainContent(
 @Composable
 private fun ProfileGrid(
     profiles: List<UserProfile>,
-    activeProfileId: Int,
+    activeProfileId: String,
     isManagementMode: Boolean,
     canAddProfile: Boolean,
-    profilePinEnabled: Map<Int, Boolean>,
+    profilePinEnabled: Map<String, Boolean>,
     avatarImageUrlsById: Map<String, String>,
     onProfileFocused: (UserProfile?) -> Unit,
     onProfileSelected: (UserProfile) -> Unit,
@@ -1321,7 +1321,7 @@ private fun CreateProfileOverlay(
         name: String,
         colorHex: String,
         avatarId: String?,
-        copyFromProfileId: Int?,
+        copyFromProfileId: String?,
         copyProviderCredentials: Boolean
     ) -> Unit
 ) {

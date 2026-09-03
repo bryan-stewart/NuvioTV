@@ -32,7 +32,7 @@ class LibrarySyncService @Inject constructor(
 ) {
     private val syncMutex = Mutex()
 
-    suspend fun pushToRemote(profileId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun pushToRemote(profileId: String): Result<Unit> = withContext(Dispatchers.IO) {
         syncMutex.withLock {
             try {
                 var state = localStore.getSyncState(profileId)
@@ -51,7 +51,7 @@ class LibrarySyncService @Inject constructor(
     }
 
     suspend fun syncFromRemote(
-        profileId: Int
+        profileId: String
     ): Result<LibraryRemoteSyncResult> = withContext(Dispatchers.IO) {
         syncMutex.withLock {
             try {
@@ -125,7 +125,7 @@ class LibrarySyncService @Inject constructor(
     }
 
     private suspend fun pushPendingMutations(
-        profileId: Int,
+        profileId: String,
         state: LibrarySyncState
     ): Pair<Int, Int> {
         if (!state.hasPendingMutations) return 0 to 0

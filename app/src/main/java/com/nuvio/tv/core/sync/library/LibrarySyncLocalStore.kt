@@ -7,23 +7,23 @@ import com.nuvio.tv.domain.model.LibrarySyncState
 import com.nuvio.tv.domain.model.SavedLibraryItem
 
 interface LibrarySyncLocalStore {
-    suspend fun getSyncState(profileId: Int): LibrarySyncState
+    suspend fun getSyncState(profileId: String): LibrarySyncState
 
     suspend fun applyRemoteSnapshot(
-        profileId: Int,
+        profileId: String,
         remoteItems: Collection<SavedLibraryItem>,
         cursorEventId: Long
     ): LibrarySnapshotApplyResult
 
     suspend fun applyRemoteDelta(
-        profileId: Int,
+        profileId: String,
         events: Collection<LibraryDeltaEvent>
     ): LibraryDeltaApplyResult
 
-    suspend fun queueAllItemsForPush(profileId: Int): LibrarySyncState
+    suspend fun queueAllItemsForPush(profileId: String): LibrarySyncState
 
     suspend fun acknowledgePush(
-        profileId: Int,
+        profileId: String,
         expectedMutationRevision: Long
     ): Boolean
 }

@@ -36,10 +36,10 @@ import com.nuvio.tv.ui.theme.NuvioTheme
 @Composable
 internal fun ProfileSettingsSourceDialog(
     profiles: List<UserProfile>,
-    selectedSourceProfileId: Int?,
+    selectedSourceProfileId: String?,
     copyProviderCredentials: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (sourceProfileId: Int?, copyProviderCredentials: Boolean) -> Unit
+    onConfirm: (sourceProfileId: String?, copyProviderCredentials: Boolean) -> Unit
 ) {
     var pendingSourceProfileId by remember(selectedSourceProfileId) {
         mutableStateOf(selectedSourceProfileId)
@@ -152,7 +152,7 @@ internal fun CopyProfileSettingsDialog(
     isCopying: Boolean,
     errorMessage: String?,
     onDismiss: () -> Unit,
-    onCopy: (sourceProfileId: Int, copyProviderCredentials: Boolean) -> Unit
+    onCopy: (sourceProfileId: String, copyProviderCredentials: Boolean) -> Unit
 ) {
     val sourceProfiles = remember(profiles, targetProfile.id) {
         profiles.filterNot { it.id == targetProfile.id }

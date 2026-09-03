@@ -18,7 +18,7 @@ data class SupabasePlugin(
     val name: String? = null,
     val enabled: Boolean = true,
     @SerialName("sort_order") val sortOrder: Int = 0,
-    @SerialName("profile_id") val profileId: Int = 1,
+    @SerialName("profile_id") val profileId: String = "",
     @SerialName("repo_type") val repoType: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null
@@ -32,7 +32,7 @@ data class SupabaseAddon(
     val name: String? = null,
     val enabled: Boolean = true,
     @SerialName("sort_order") val sortOrder: Int = 0,
-    @SerialName("profile_id") val profileId: Int = 1,
+    @SerialName("profile_id") val profileId: String = "",
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null
 )
@@ -106,7 +106,7 @@ data class SupabaseWatchProgress(
     val duration: Long,
     @SerialName("last_watched") val lastWatched: Long,
     @SerialName("progress_key") val progressKey: String,
-    @SerialName("profile_id") val profileId: Int = 1
+    @SerialName("profile_id") val profileId: String = ""
 )
 
 @Serializable
@@ -134,7 +134,7 @@ data class SupabaseWatchedItem(
     val season: Int? = null,
     val episode: Int? = null,
     @SerialName("watched_at") val watchedAt: Long,
-    @SerialName("profile_id") val profileId: Int = 1
+    @SerialName("profile_id") val profileId: String = ""
 )
 
 @Serializable
@@ -153,7 +153,12 @@ data class SupabaseWatchedItemEvent(
 data class SupabaseProfile(
     val id: String? = null,
     @SerialName("user_id") val userId: String? = null,
-    @SerialName("profile_index") val profileIndex: Int,
+    // The real backend profile uuid — this is identity now, everywhere.
+    @SerialName("profile_id") val profileId: String,
+    // Slot-derived display order only (see memberships.slot's own
+    // comment in the backend) — never used as identity for anything.
+    @SerialName("profile_index") val profileIndex: Int = 0,
+    @SerialName("is_manager") val isManager: Boolean = false,
     val name: String = "",
     @SerialName("avatar_color_hex") val avatarColorHex: String = "#1E88E5",
     @SerialName("uses_primary_addons") val usesPrimaryAddons: Boolean = false,
@@ -211,7 +216,7 @@ data class SupabaseMemberAvatarCatalogItem(
 
 @Serializable
 data class SupabaseProfileSettingsBlob(
-    @SerialName("profile_id") val profileId: Int = 1,
+    @SerialName("profile_id") val profileId: String = "",
     @SerialName("settings_json") val settingsJson: JsonObject = buildJsonObject { },
     @SerialName("updated_at") val updatedAt: String? = null
 )
@@ -220,22 +225,22 @@ data class SupabaseProfileSettingsBlob(
 @JsonIgnoreUnknownKeys
 @Serializable
 data class SupabaseProfileSetupCopyResult(
-    @SerialName("source_profile_id") val sourceProfileId: Int,
-    @SerialName("target_profile_id") val targetProfileId: Int,
+    @SerialName("source_profile_id") val sourceProfileId: String,
+    @SerialName("target_profile_id") val targetProfileId: String,
     @SerialName("tv_status") val tvStatus: String,
     @SerialName("provider_credentials_status") val providerCredentialsStatus: String
 )
 
 @Serializable
 data class SupabaseCollectionBlob(
-    @SerialName("profile_id") val profileId: Int = 1,
+    @SerialName("profile_id") val profileId: String = "",
     @SerialName("collections_json") val collectionsJson: JsonElement = JsonArray(emptyList()),
     @SerialName("updated_at") val updatedAt: String? = null
 )
 
 @Serializable
 data class SupabaseHomeCatalogSettingsBlob(
-    @SerialName("profile_id") val profileId: Int = 1,
+    @SerialName("profile_id") val profileId: String = "",
     @SerialName("settings_json") val settingsJson: JsonObject = buildJsonObject { },
     @SerialName("updated_at") val updatedAt: String? = null
 )

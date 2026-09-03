@@ -24,7 +24,7 @@ class ExperienceModeDataStore @Inject constructor(
     private val modeKey = stringPreferencesKey("mode")
     private val addonSetupSkippedKey = booleanPreferencesKey("addon_setup_skipped")
 
-    private fun store(profileId: Int = profileManager.activeProfileId.value) =
+    private fun store(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, FEATURE)
 
     @OptIn(ExperimentalCoroutinesApi::class)

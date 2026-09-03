@@ -59,7 +59,7 @@ class ProfileDataStoreFactory @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val cache = ConcurrentHashMap<String, ScopedDataStore>()
-    private val deletedProfileIds = ConcurrentHashMap.newKeySet<Int>()
+    private val deletedProfileIds = ConcurrentHashMap.newKeySet<String>()
     private val lock = Any()
     private val retainedStandaloneDataStoreNames = setOf(
         "app_onboarding",
@@ -76,16 +76,16 @@ class ProfileDataStoreFactory @Inject constructor(
     /** Set of DataStore file names that were reset due to corruption during this session. */
     val corruptedFileNames: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
-    fun get(profileId: Int, featureName: String): DataStore<Preferences> {
-        val fileName = if (profileId == 1) featureName else "${featureName}_p$profileId"
+    fun get(profileId: String, featureName: String): DataStore<Preferences> {
+        val fileName = if (profileId.isBlank()) featureName else "${featureName}_p$profileId"
         synchronized(lock) {
             cache[fileName]?.let { return it.store }
             return createAndCache(fileName).store
         }
     }
 
-    suspend fun clearProfile(profileId: Int) {
-        if (profileId == 1) return
+    suspend fun clearProfile(profileId: String) {
+        if (profileId.isBlank()) return
         deletedProfileIds.add(profileId)
         val suffix = "_p$profileId"
         val keysToRemove = synchronized(lock) {
@@ -120,9 +120,9 @@ class ProfileDataStoreFactory @Inject constructor(
         }
     }
 
-    fun isProfileDeleted(profileId: Int): Boolean = profileId in deletedProfileIds
+    fun isProfileDeleted(profileId: String): Boolean = profileId in deletedProfileIds
 
-    fun markProfileCreated(profileId: Int) {
+    fun markProfileCreated(profileId: String) {
         deletedProfileIds.remove(profileId)
     }
 

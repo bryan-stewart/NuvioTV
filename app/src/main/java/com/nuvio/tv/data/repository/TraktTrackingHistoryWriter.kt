@@ -20,7 +20,7 @@ class TraktTrackingHistoryWriter @Inject constructor(
     override val providerId = TrackingProviderId.TRAKT
 
     override suspend fun addToHistory(
-        profileId: Int,
+        profileId: String,
         items: Collection<TrackingHistoryItem>
     ): TrackingMutationResult {
         if (profileId != profileManager.activeProfileId.value) return TrackingMutationResult(0)
@@ -38,7 +38,7 @@ class TraktTrackingHistoryWriter @Inject constructor(
     }
 
     override suspend fun removeFromHistory(
-        profileId: Int,
+        profileId: String,
         items: Collection<TrackingMediaReference>
     ): TrackingMutationResult {
         if (profileId != profileManager.activeProfileId.value) return TrackingMutationResult(0)

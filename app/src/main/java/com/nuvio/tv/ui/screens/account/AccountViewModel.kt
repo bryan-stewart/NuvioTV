@@ -535,16 +535,18 @@ class AccountViewModel @Inject constructor(
                     .distinct()
                     .sorted()
 
-                val localProfiles = profileManager.profiles.value
                 val perProfile = allProfileIds.map { pid ->
                     val pidStr = pid.toString()
-                    val local = localProfiles.firstOrNull { it.id == pid }
+                    // The old (dead, official-backend-only) get_sync_overview RPC keys
+                    // everything by the legacy Int slot — there's no meaningful way to
+                    // cross-reference that against real household profiles anymore, so
+                    // this now only ever reflects what get_sync_overview itself returns.
                     val remote = response.profiles[pidStr]
                     ProfileSyncStats(
                         profileId = pid,
-                        profileName = local?.name ?: remote?.name
+                        profileName = remote?.name
                             ?: context.getString(com.nuvio.tv.R.string.profile_default_name, pid),
-                        avatarColorHex = local?.avatarColorHex ?: remote?.color ?: "#1E88E5",
+                        avatarColorHex = remote?.color ?: "#1E88E5",
                         addons = response.addons[pidStr] ?: 0,
                         plugins = response.plugins[pidStr] ?: 0,
                         library = response.libraryItems[pidStr] ?: 0,
