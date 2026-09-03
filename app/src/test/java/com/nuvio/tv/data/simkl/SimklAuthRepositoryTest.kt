@@ -140,12 +140,12 @@ class SimklAuthRepositoryTest {
     fun `approved pin is discarded when the active profile changes during polling`() = runTest {
         val harness = Harness(response(200, """{"result":"OK","access_token":"profile-one-token"}"""))
         harness.storage.savePinSession(session())
-        harness.engine.beforeResponse = { harness.storage.switchProfile(2) }
+        harness.engine.beforeResponse = { harness.storage.switchProfile("2") }
 
         assertEquals(SimklPinPollResult.Invalidated, harness.repository.pollPin())
         assertNull(harness.storage.accessToken())
 
-        harness.storage.switchProfile(1)
+        harness.storage.switchProfile("1")
 
         assertNull(harness.storage.accessToken())
         assertFalse(harness.storage.state.value.isAuthenticated)
@@ -155,10 +155,10 @@ class SimklAuthRepositoryTest {
     fun `delayed unauthorized response cannot disconnect the newly active profile`() {
         val harness = Harness(response(401))
         harness.storage.completePinAuthorization("profile-one-token", harness.storage.currentScope())
-        harness.storage.switchProfile(2)
+        harness.storage.switchProfile("2")
         harness.storage.completePinAuthorization("profile-two-token", harness.storage.currentScope())
-        harness.storage.switchProfile(1)
-        harness.engine.beforeResponse = { harness.storage.switchProfile(2) }
+        harness.storage.switchProfile("1")
+        harness.engine.beforeResponse = { harness.storage.switchProfile("2") }
 
         assertThrows(SimklApiException::class.java) {
             kotlinx.coroutines.runBlocking { harness.repository.refreshUserSettings() }
@@ -195,9 +195,9 @@ class SimklAuthRepositoryTest {
     }
 
     private class FakeStorage : SimklAuthStorage {
-        private val profiles = mutableMapOf(1 to StoredProfile())
+        private val profiles = mutableMapOf("1" to StoredProfile())
         private val mutableState = MutableStateFlow(SimklAuthState())
-        private var activeProfileId = 1
+        private var activeProfileId = "1"
         private var generation = 0L
         override val state: StateFlow<SimklAuthState> = mutableState
 
@@ -267,7 +267,7 @@ class SimklAuthRepositoryTest {
             return true
         }
 
-        override fun removeProfile(profileId: Int) {
+        override fun removeProfile(profileId: String) {
             profiles.remove(profileId)
             if (profileId == activeProfileId) {
                 generation += 1L
@@ -283,7 +283,7 @@ class SimklAuthRepositoryTest {
             publish()
         }
 
-        fun switchProfile(profileId: Int) {
+        fun switchProfile(profileId: String) {
             if (profileId != activeProfileId) {
                 activeProfileId = profileId
                 generation += 1L

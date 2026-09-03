@@ -352,7 +352,7 @@ class WatchProgressPreferencesStorageTest {
             stores.getValue(secondArg<String>())
         }
         val profileManager = mockk<ProfileManager>()
-        every { profileManager.activeProfileId } returns MutableStateFlow(1)
+        every { profileManager.activeProfileId } returns MutableStateFlow("1")
         return Harness(
             preferences = WatchProgressPreferences(factory, profileManager),
             factory = factory,

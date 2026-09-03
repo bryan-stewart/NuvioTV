@@ -87,7 +87,7 @@ class WatchedItemsPullPreservationTest {
         val factory = mockk<ProfileDataStoreFactory>()
         every { factory.get(any(), any()) } returns store
         val profileManager = mockk<ProfileManager>()
-        every { profileManager.activeProfileId } returns MutableStateFlow(1)
+        every { profileManager.activeProfileId } returns MutableStateFlow("1")
         return WatchedItemsPreferences(factory, profileManager)
     }
 

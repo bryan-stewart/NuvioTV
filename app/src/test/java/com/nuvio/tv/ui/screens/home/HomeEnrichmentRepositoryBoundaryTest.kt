@@ -165,7 +165,7 @@ class HomeEnrichmentRepositoryBoundaryTest {
     private fun newViewModel(metaRepository: MetaRepositoryImpl): HomeViewModel {
         val profileManager = mockk<com.nuvio.tv.core.profile.ProfileManager>(relaxed = true) {
             every { activeProfileReady } returns MutableStateFlow(false)
-            every { activeProfileId } returns MutableStateFlow(1)
+            every { activeProfileId } returns MutableStateFlow("1")
         }
         val cwEnrichmentCache =
             mockk<com.nuvio.tv.data.local.ContinueWatchingEnrichmentCache>(relaxed = true) {

@@ -13,9 +13,10 @@ class AddonManagementAccessTest {
     @Test
     fun `secondary profile using primary addons is read only and collections only`() {
         val profile = UserProfile(
-            id = 2,
+            id = "2",
             name = "Secondary",
             avatarColorHex = "#FFFFFF",
+            isManager = false,
             usesPrimaryAddons = true
         )
 
@@ -29,9 +30,10 @@ class AddonManagementAccessTest {
     @Test
     fun `primary profile keeps full addon management`() {
         val profile = UserProfile(
-            id = 1,
+            id = "1",
             name = "Primary",
             avatarColorHex = "#000000",
+            isManager = true,
             usesPrimaryAddons = true
         )
 
@@ -45,9 +47,10 @@ class AddonManagementAccessTest {
     @Test
     fun `primary essential profile uses addons only web management`() {
         val profile = UserProfile(
-            id = 1,
+            id = "1",
             name = "Primary",
             avatarColorHex = "#000000",
+            isManager = true,
             usesPrimaryAddons = false
         )
 
