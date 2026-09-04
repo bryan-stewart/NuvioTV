@@ -23,13 +23,23 @@ class ProfileSettingsViewModel @Inject constructor(
 
     val profiles: StateFlow<List<UserProfile>> = profileManager.profiles
 
-    // Was "activeProfileId == 1" — a real household has no numbered primary
-    // slot, so this reflects whoever the backend says manages the household.
+    // Gates whether Settings shows the Account/Profiles sections at all —
+    // was "activeProfileId == 1" back when a local install always had a
+    // numbered primary slot. A real household has no such slot, so this
+    // reflects whoever the backend says manages the household — except
+    // when this device only ever has one profile to begin with (a
+    // non-Manager is always resolved to a single "self" profile; see
+    // sync_pull_profiles's own comment), in which case there's no other
+    // profile whose access this could leak into, so it's shown regardless
+    // of manager status. Otherwise a non-Manager member profile — reachable
+    // by switching profiles on a Manager's whole-household device — would
+    // correctly stay locked out of Account/Profiles, but so would a
+    // non-Manager's own single-profile device, with no way back to Sign Out.
     val isPrimaryProfileActive: StateFlow<Boolean> = combine(
         profileManager.activeProfileId,
         profileManager.profiles
     ) { activeId, profiles ->
-        profiles.firstOrNull { it.id == activeId }?.isManager == true
+        profiles.size <= 1 || profiles.firstOrNull { it.id == activeId }?.isManager == true
     }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     val canAddProfile: Boolean
