@@ -38,6 +38,8 @@ class ProfileDataStore @Inject constructor(
     private val hasEverSelectedProfileKey = booleanPreferencesKey("profile_has_ever_selected")
     private val rememberLastProfileEnabledKey = booleanPreferencesKey("remember_last_profile_enabled")
     private val confirmExitEnabledKey = booleanPreferencesKey("confirm_exit_enabled")
+    private val householdIdKey = stringPreferencesKey("household_id")
+    private val householdScopeKey = stringPreferencesKey("household_scope")
 
     private val profileListType = Types.newParameterizedType(List::class.java, ProfileJson::class.java)
 
@@ -66,6 +68,23 @@ class ProfileDataStore @Inject constructor(
         prefs[confirmExitEnabledKey] ?: false
     }
 
+    // Which household this device brings profiles from, and whether it
+    // shows the whole household or just the signed-in profile. Resolved
+    // once per sign-in (a household picker if the login belongs to more
+    // than one, then — only for that household's own Manager — a whole-
+    // household-vs-just-me picker) and never revisited until a sign-out
+    // clears it via clearAll(): deliberately device-local, since the same
+    // login answers differently on the shared living-room TV than on
+    // someone's own phone. "" means "not yet resolved" for either — never
+    // a real household id, and never a valid scope value.
+    val householdId: Flow<String> = dataStore.data.map { prefs ->
+        prefs[householdIdKey] ?: ""
+    }
+
+    val householdScope: Flow<String> = dataStore.data.map { prefs ->
+        prefs[householdScopeKey] ?: ""
+    }
+
     suspend fun setActiveProfile(id: String) {
         dataStore.edit { prefs ->
             prefs[activeProfileIdKey] = id
@@ -82,6 +101,18 @@ class ProfileDataStore @Inject constructor(
     suspend fun setConfirmExitEnabled(enabled: Boolean) {
         dataStore.edit { prefs ->
             prefs[confirmExitEnabledKey] = enabled
+        }
+    }
+
+    suspend fun setHouseholdId(id: String) {
+        dataStore.edit { prefs ->
+            prefs[householdIdKey] = id
+        }
+    }
+
+    suspend fun setHouseholdScope(scope: String) {
+        dataStore.edit { prefs ->
+            prefs[householdScopeKey] = scope
         }
     }
 

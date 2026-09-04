@@ -160,7 +160,10 @@ import com.nuvio.tv.ui.navigation.Screen
 import com.nuvio.tv.ui.membership.LocalMemberAccess
 import com.nuvio.tv.ui.screens.account.AuthQrSignInScreen
 import com.nuvio.tv.ui.screens.addon.EssentialAddonSetupScreen
+import com.nuvio.tv.ui.screens.HouseholdSelectionScreen
+import com.nuvio.tv.ui.screens.HouseholdScopeSelectionScreen
 import com.nuvio.tv.ui.screens.profile.ProfileSelectionScreen
+import com.nuvio.tv.data.remote.supabase.SupabaseHousehold
 import com.nuvio.tv.ui.theme.NuvioComponents
 import com.nuvio.tv.ui.theme.NuvioLayout
 import com.nuvio.tv.ui.theme.NuvioMotion
@@ -378,6 +381,39 @@ open class MainActivity : ComponentActivity() {
             val profiles by profileManager.profiles.collectAsState()
             val hasEverSelectedProfile by profileManager.hasEverSelectedProfile.collectAsState()
             val rememberLastProfileEnabled by profileManager.rememberLastProfileEnabled.collectAsState()
+
+            // Resolved once per sign-in, before sync_pull_profiles is ever
+            // called — see ProfileManager.householdId's own comment. A
+            // login with only one household never sees a picker at all
+            // (auto-selected here); a non-Manager's scope is auto-set to
+            // "self" the instant a household is known, since they're never
+            // asked — see sync_pull_profiles's own enforcement of that
+            // same rule server-side.
+            val householdId by profileManager.householdId.collectAsState()
+            val householdScope by profileManager.householdScope.collectAsState()
+            var pendingHouseholds by remember { mutableStateOf<List<SupabaseHousehold>?>(null) }
+
+            LaunchedEffect(authState, householdId) {
+                if (authState is AuthState.FullAccount && householdId.isBlank()) {
+                    val households = profileManager.pullMyHouseholds()
+                    if (households.size == 1) {
+                        val only = households[0]
+                        profileManager.selectHousehold(only.householdId)
+                        if (!only.isManager) {
+                            // A non-Manager is never asked the whole/self
+                            // question at all — both are resolved in this
+                            // one shot, so nothing else will trigger the
+                            // actual sync unless this does.
+                            profileManager.selectHouseholdScope("self")
+                            startupSyncService.requestSyncNow()
+                        }
+                    } else {
+                        pendingHouseholds = households
+                    }
+                } else if (authState !is AuthState.FullAccount) {
+                    pendingHouseholds = null
+                }
+            }
             val activeProfile = remember(activeProfileId, profiles) {
                 profiles.firstOrNull { it.id == activeProfileId }
             }
@@ -604,6 +640,50 @@ open class MainActivity : ComponentActivity() {
                                     onboardingCompletedThisSession = true
                                     onboardingProfileSyncInProgress = false
                                 }
+                                if (authManager.authState.value is AuthState.FullAccount) {
+                                    startupSyncService.requestSyncNow()
+                                }
+                            }
+                        )
+                        return@Surface
+                    }
+
+                    if (authState is AuthState.FullAccount && householdId.isBlank()) {
+                        val households = pendingHouseholds
+                        if (households != null && households.size > 1) {
+                            HouseholdSelectionScreen(
+                                households = households,
+                                onSelected = { selected ->
+                                    if (!selected.isManager) {
+                                        // Same one-shot case as the
+                                        // single-household auto-select
+                                        // above — a non-Manager is never
+                                        // shown the scope screen, so this
+                                        // is the only thing that will ever
+                                        // trigger the actual sync here.
+                                        // Sequenced, not fire-and-forget:
+                                        // requestSyncNow must not race the
+                                        // scope write it depends on.
+                                        lifecycleScope.launch {
+                                            profileManager.selectHouseholdScope("self")
+                                            startupSyncService.requestSyncNow()
+                                        }
+                                    }
+                                }
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(NuvioTheme.colors.Background)
+                            )
+                        }
+                        return@Surface
+                    }
+
+                    if (authState is AuthState.FullAccount && householdId.isNotBlank() && householdScope.isBlank()) {
+                        HouseholdScopeSelectionScreen(
+                            onContinue = {
                                 if (authManager.authState.value is AuthState.FullAccount) {
                                     startupSyncService.requestSyncNow()
                                 }

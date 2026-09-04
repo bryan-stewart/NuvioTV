@@ -3167,4 +3167,15 @@
     <string name="stream_test_video_bitrate">Average Video Bitrate: %1$s</string>
     <string name="stream_test_error_connection">Connection failed. The last played stream link may have expired or is unreachable. Please play the video again and retry.</string>
 
+    <string name="household_picker_title">Which household?</string>
+    <string name="household_picker_subtitle">This login belongs to more than one household. Choose which one this device signs into.</string>
+    <string name="household_picker_you_manage">You manage this</string>
+
+    <string name="household_scope_title">What should this device show?</string>
+    <string name="household_scope_subtitle">You can change this later by signing out and back in.</string>
+    <string name="household_scope_whole_household">Whole Household</string>
+    <string name="household_scope_whole_household_subtitle">See every profile in your household on this device.</string>
+    <string name="household_scope_just_me">Just My Profile</string>
+    <string name="household_scope_just_me_subtitle">Only bring your own profile — for a device just you use.</string>
+
 </resources>

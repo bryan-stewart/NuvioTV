@@ -171,6 +171,26 @@ data class SupabaseProfile(
     @SerialName("updated_at") val updatedAt: String? = null
 )
 
+// pull_my_households's row shape — single-household assumption throughout
+// this schema, same as sync_pull_profiles's own LIMIT 1.
+@Serializable
+data class SupabaseHousehold(
+    @SerialName("household_id") val householdId: String,
+    @SerialName("household_name") val householdName: String = "",
+    @SerialName("is_manager") val isManager: Boolean = false
+)
+
+// create_household_profile returns a raw public.profiles row (many more
+// columns than this) — only what ProfileManager.createProfile actually
+// needs to hand back to its caller; everything else comes down again on
+// the next sync_pull_profiles pull.
+@Serializable
+data class SupabaseCreatedProfile(
+    val id: String,
+    val name: String = "",
+    @SerialName("avatar_color_hex") val avatarColorHex: String = "#1E88E5"
+)
+
 @Serializable
 data class SupabaseProfileBackgroundCatalogItem(
     val id: String,

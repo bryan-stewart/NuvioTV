@@ -106,9 +106,23 @@ class ProfileSyncService @Inject constructor(
             if (!force && userId != null && pullFreshness.isRecent(userId, now)) {
                 return@withLock Result.success(lastPulledProfiles)
             }
+            // Household selection has to happen before this ever runs — see
+            // ProfileManager.householdId's own comment. Calling this with no
+            // household resolved yet is a caller bug, not something to paper
+            // over with a guessed default the way the old zero-arg RPC did.
+            val householdId = profileManager.householdId.value
+            if (householdId.isBlank()) {
+                Log.w(TAG, "pullFromRemote: no household selected yet, skipping")
+                return@withLock Result.failure(IllegalStateException("No household selected"))
+            }
+            val householdScope = profileManager.householdScope.value.ifBlank { "household" }
             try {
+                val params = buildJsonObject {
+                    put("p_household_id", householdId)
+                    put("p_household_scope", householdScope)
+                }
                 val response = withJwtRefreshRetry {
-                    postgrest.rpc("sync_pull_profiles")
+                    postgrest.rpc("sync_pull_profiles", params)
                 }
                 val remote = response.decodeList<SupabaseProfile>()
 
