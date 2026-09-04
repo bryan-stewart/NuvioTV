@@ -131,7 +131,6 @@ import com.nuvio.tv.core.sync.ProfileSyncService
 import com.nuvio.tv.core.sync.StartupSyncService
 import com.nuvio.tv.core.tracking.TrackingProgressRefreshCoordinator
 import com.nuvio.tv.core.tracking.TrackingRefreshIntent
-import com.nuvio.tv.data.local.AppOnboardingDataStore
 import com.nuvio.tv.data.local.AuthSessionNoticeDataStore
 import com.nuvio.tv.data.local.ExperienceModeDataStore
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
@@ -186,7 +185,6 @@ import javax.inject.Inject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 val LocalSidebarExpanded = compositionLocalOf { false }
@@ -265,9 +263,6 @@ open class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var authSessionNoticeDataStore: AuthSessionNoticeDataStore
-
-    @Inject
-    lateinit var appOnboardingDataStore: AppOnboardingDataStore
 
     @Inject
     lateinit var avatarRepository: AvatarRepository
@@ -350,10 +345,6 @@ open class MainActivity : ComponentActivity() {
             var hasSelectedProfileThisSession by rememberSaveable { mutableStateOf(false) }
             var onboardingCompletedThisSession by remember { mutableStateOf(false) }
             var onboardingProfileSyncInProgress by remember { mutableStateOf(false) }
-            val hasSeenAuthQrFlow = remember(appOnboardingDataStore) {
-                appOnboardingDataStore.hasSeenAuthQrOnFirstLaunch.map<Boolean, Boolean?> { it }
-            }
-            val hasSeenAuthQrOnFirstLaunch by hasSeenAuthQrFlow.collectAsState(initial = null)
             val authState by authManager.authState.collectAsState()
             val context = LocalContext.current
 
@@ -367,13 +358,6 @@ open class MainActivity : ComponentActivity() {
                         ).show()
                         authSessionNoticeDataStore.consumeNotice(notice)
                     }
-                }
-            }
-
-            LaunchedEffect(hasSeenAuthQrOnFirstLaunch, authState) {
-                if (hasSeenAuthQrOnFirstLaunch == false && authState is AuthState.FullAccount) {
-                    appOnboardingDataStore.setHasSeenAuthQrOnFirstLaunch(true)
-                    onboardingCompletedThisSession = true
                 }
             }
 
@@ -584,15 +568,6 @@ open class MainActivity : ComponentActivity() {
                         containerColor = NuvioTheme.colors.Background
                     )
                 ) {
-                    if (hasSeenAuthQrOnFirstLaunch == null) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(NuvioTheme.colors.Background)
-                        )
-                        return@Surface
-                    }
-
                     if (authState is AuthState.Loading) {
                         Box(
                             modifier = Modifier
@@ -603,7 +578,6 @@ open class MainActivity : ComponentActivity() {
                     }
 
                     if (
-                        hasSeenAuthQrOnFirstLaunch == false &&
                         authState !is AuthState.FullAccount &&
                         !onboardingCompletedThisSession
                     ) {
@@ -636,7 +610,6 @@ open class MainActivity : ComponentActivity() {
                                             )
                                         }
                                     }
-                                    appOnboardingDataStore.setHasSeenAuthQrOnFirstLaunch(true)
                                     onboardingCompletedThisSession = true
                                     onboardingProfileSyncInProgress = false
                                 }
