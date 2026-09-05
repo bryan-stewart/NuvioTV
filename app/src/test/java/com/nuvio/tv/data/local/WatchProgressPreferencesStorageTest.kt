@@ -301,7 +301,7 @@ class WatchProgressPreferencesStorageTest {
         harness.preferences.saveProgress(second, profileId = "2")
         val fixedProfileFlow = harness.preferences.getProgress("first", profileId = "1")
 
-        harness.activeProfile.value = 2
+        harness.activeProfile.value = "2"
 
         assertEquals(first, fixedProfileFlow.first())
     }
@@ -432,11 +432,11 @@ class WatchProgressPreferencesStorageTest {
     }
 
     private fun multiProfileHarness(): MultiProfileHarness {
-        val activeProfile = MutableStateFlow(1)
-        val stores = mutableMapOf<Pair<Int, String>, TestPreferencesDataStore>()
+        val activeProfile = MutableStateFlow("1")
+        val stores = mutableMapOf<Pair<String, String>, TestPreferencesDataStore>()
         val factory = mockk<ProfileDataStoreFactory>()
         every { factory.get(any(), any()) } answers {
-            stores.getOrPut(firstArg<Int>() to secondArg<String>()) {
+            stores.getOrPut(firstArg<String>() to secondArg<String>()) {
                 TestPreferencesDataStore()
             }
         }
@@ -498,7 +498,7 @@ class WatchProgressPreferencesStorageTest {
 
     private data class MultiProfileHarness(
         val preferences: WatchProgressPreferences,
-        val activeProfile: MutableStateFlow<Int>
+        val activeProfile: MutableStateFlow<String>
     )
 
     private class TestPreferencesDataStore(
