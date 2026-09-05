@@ -1,12 +1,10 @@
 package com.nuvio.tv.data.remote.supabase
 
 import io.github.jan.supabase.auth.user.UserInfo
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 
@@ -243,16 +241,6 @@ data class SupabaseProfileSettingsBlob(
     @SerialName("profile_id") val profileId: String = "",
     @SerialName("settings_json") val settingsJson: JsonObject = buildJsonObject { },
     @SerialName("updated_at") val updatedAt: String? = null
-)
-
-@OptIn(ExperimentalSerializationApi::class)
-@JsonIgnoreUnknownKeys
-@Serializable
-data class SupabaseProfileSetupCopyResult(
-    @SerialName("source_profile_id") val sourceProfileId: String,
-    @SerialName("target_profile_id") val targetProfileId: String,
-    @SerialName("tv_status") val tvStatus: String,
-    @SerialName("provider_credentials_status") val providerCredentialsStatus: String
 )
 
 @Serializable

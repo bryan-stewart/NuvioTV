@@ -482,28 +482,15 @@ fun ProfileSelectionScreen(
                 avatarCatalog = avatarCatalog,
                 isCreating = isCreating,
                 onDismiss = { if (!isCreating) showCreateProfile = false },
-                onCreateProfile = { name, colorHex, avatarId, copyFromProfileId, copyProviderCredentials ->
+                onCreateProfile = { name, colorHex, avatarId ->
                     viewModel.createProfile(
                         name = name,
                         avatarColorHex = colorHex,
-                        avatarId = avatarId,
-                        copyFromProfileId = copyFromProfileId,
-                        copyProviderCredentials = copyProviderCredentials
+                        avatarId = avatarId
                     ) { result ->
                         when (result) {
                             is CreateProfileResult.Created -> {
                                 showCreateProfile = false
-                                val sourceName = profiles.firstOrNull { it.id == copyFromProfileId }?.name
-                                if (result.settingsCopyResult?.isSuccess == true && sourceName != null) {
-                                    profileActionMessage = context.getString(
-                                        R.string.profile_copy_settings_created_success,
-                                        sourceName
-                                    )
-                                } else if (result.settingsCopyResult?.isFailure == true) {
-                                    profileActionMessage = context.getString(
-                                        R.string.profile_copy_settings_created_error
-                                    )
-                                }
                             }
                             CreateProfileResult.Failed -> {
                                 profileActionMessage = context.getString(R.string.profile_create_error)
@@ -1304,9 +1291,7 @@ private fun CreateProfileOverlay(
     onCreateProfile: (
         name: String,
         colorHex: String,
-        avatarId: String?,
-        copyFromProfileId: String?,
-        copyProviderCredentials: Boolean
+        avatarId: String?
     ) -> Unit
 ) {
     BackHandler(onBack = onDismiss)
@@ -1315,9 +1300,6 @@ private fun CreateProfileOverlay(
     var selectedColorHex by remember { mutableStateOf("#1E88E5") }
     var selectedAvatarId by remember { mutableStateOf<String?>(null) }
     var focusedAvatarName by remember { mutableStateOf<String?>(null) }
-    var selectedCopySourceId by remember { mutableStateOf<String?>(null) }
-    var copyProviderCredentials by remember { mutableStateOf(false) }
-    var showSettingsSourceDialog by remember { mutableStateOf(false) }
     val selectedAvatar = remember(avatarCatalog, selectedAvatarId) {
         avatarCatalog.find { it.id == selectedAvatarId }
     }
@@ -1395,9 +1377,7 @@ private fun CreateProfileOverlay(
                             onCreateProfile(
                                 profileName,
                                 selectedColorHex,
-                                selectedAvatarId,
-                                selectedCopySourceId,
-                                copyProviderCredentials
+                                selectedAvatarId
                             )
                         }
                     )
@@ -1445,22 +1425,6 @@ private fun CreateProfileOverlay(
                         value = profileName,
                         onValueChange = { if (it.length <= 20) profileName = it },
                         focusRequester = nameFocusRequester
-                    )
-
-                    val selectedCopySource = profiles.firstOrNull { it.id == selectedCopySourceId }
-                    OverlayButton(
-                        text = if (selectedCopySource == null) {
-                            stringResource(R.string.profile_copy_settings_create_fresh)
-                        } else {
-                            stringResource(
-                                R.string.profile_copy_settings_create_source,
-                                selectedCopySource.name
-                            )
-                        },
-                        isPrimary = false,
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isCreating,
-                        onClick = { showSettingsSourceDialog = true }
                     )
 
                 }
@@ -1540,20 +1504,6 @@ private fun CreateProfileOverlay(
 
             Spacer(modifier = Modifier.height(NuvioTheme.spacing.xl))
         }
-    }
-
-    if (showSettingsSourceDialog) {
-        ProfileSettingsSourceDialog(
-            profiles = profiles,
-            selectedSourceProfileId = selectedCopySourceId,
-            copyProviderCredentials = copyProviderCredentials,
-            onDismiss = { showSettingsSourceDialog = false },
-            onConfirm = { sourceProfileId, shouldCopyProviderCredentials ->
-                selectedCopySourceId = sourceProfileId
-                copyProviderCredentials = shouldCopyProviderCredentials
-                showSettingsSourceDialog = false
-            }
-        )
     }
 }
 

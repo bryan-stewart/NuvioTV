@@ -4,7 +4,6 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.core.profile.ProfileManager
-import com.nuvio.tv.core.sync.ProfileSettingsSyncService
 import com.nuvio.tv.core.sync.ProfileSyncService
 import com.nuvio.tv.core.sync.SetProfilePinResult
 import com.nuvio.tv.data.local.ProfileLockStateDataStore
@@ -33,10 +32,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed interface CreateProfileResult {
-    data class Created(
-        val profile: UserProfile,
-        val settingsCopyResult: Result<Unit>?
-    ) : CreateProfileResult
+    data class Created(val profile: UserProfile) : CreateProfileResult
 
     data object Failed : CreateProfileResult
 }
@@ -45,7 +41,6 @@ sealed interface CreateProfileResult {
 class ProfileSelectionViewModel @Inject constructor(
     private val profileManager: ProfileManager,
     private val profileSyncService: ProfileSyncService,
-    private val profileSettingsSyncService: ProfileSettingsSyncService,
     private val avatarRepository: AvatarRepository,
     private val profileBackgroundRepository: ProfileBackgroundRepository,
     memberAccessRepository: MemberAccessRepository,
@@ -155,8 +150,6 @@ class ProfileSelectionViewModel @Inject constructor(
         name: String,
         avatarColorHex: String,
         avatarId: String? = null,
-        copyFromProfileId: String? = null,
-        copyProviderCredentials: Boolean = false,
         onComplete: (CreateProfileResult) -> Unit = {}
     ) {
         if (_isCreating.value) return
@@ -170,15 +163,8 @@ class ProfileSelectionViewModel @Inject constructor(
                 )
                 if (profile != null) {
                     profileSyncService.pushToRemote()
-                    val copyResult = copyFromProfileId?.let { sourceProfileId ->
-                        profileSettingsSyncService.copyProfileSetup(
-                            sourceProfileId = sourceProfileId,
-                            targetProfileId = profile.id,
-                            copyProviderCredentials = copyProviderCredentials
-                        )
-                    }
                     refreshProfilePinStates()
-                    CreateProfileResult.Created(profile, copyResult)
+                    CreateProfileResult.Created(profile)
                 } else {
                     CreateProfileResult.Failed
                 }
