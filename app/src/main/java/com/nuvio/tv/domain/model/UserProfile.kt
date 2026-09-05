@@ -5,6 +5,10 @@ data class UserProfile(
     val name: String,
     val avatarColorHex: String,
     val isManager: Boolean = false,
+    // Has its own login vs. a no-login profile the Manager fully controls —
+    // see sync_pull_profiles's own comment on why. Determines which actions
+    // belong in this profile's own Profile Options menu.
+    val isAccount: Boolean = false,
     val order: Int = 0,
     val usesPrimaryAddons: Boolean = false,
     val usesPrimaryPlugins: Boolean = false,

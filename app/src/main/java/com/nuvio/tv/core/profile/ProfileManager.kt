@@ -203,6 +203,7 @@ class ProfileManager @Inject constructor(
                 name = created.name,
                 avatarColorHex = created.avatarColorHex,
                 isManager = false,
+                isAccount = false,
                 order = profiles.value.size + 1
             )
         } catch (e: Exception) {

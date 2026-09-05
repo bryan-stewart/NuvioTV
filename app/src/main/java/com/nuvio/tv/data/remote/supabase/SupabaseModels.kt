@@ -159,6 +159,10 @@ data class SupabaseProfile(
     // comment in the backend) — never used as identity for anything.
     @SerialName("profile_index") val profileIndex: Int = 0,
     @SerialName("is_manager") val isManager: Boolean = false,
+    // Has its own login (a real auth.users row) vs. a no-login profile the
+    // Manager created and fully controls — see sync_pull_profiles's own
+    // comment on why the client needs this.
+    @SerialName("is_account") val isAccount: Boolean = false,
     val name: String = "",
     @SerialName("avatar_color_hex") val avatarColorHex: String = "#1E88E5",
     @SerialName("uses_primary_addons") val usesPrimaryAddons: Boolean = false,

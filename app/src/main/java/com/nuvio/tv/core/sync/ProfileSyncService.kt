@@ -134,6 +134,7 @@ class ProfileSyncService @Inject constructor(
                         name = entry.name,
                         avatarColorHex = entry.avatarColorHex,
                         isManager = entry.isManager,
+                        isAccount = entry.isAccount,
                         order = entry.profileIndex,
                         usesPrimaryAddons = entry.usesPrimaryAddons,
                         usesPrimaryPlugins = entry.usesPrimaryPlugins,
