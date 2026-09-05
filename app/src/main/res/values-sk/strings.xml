@@ -3164,27 +3164,6 @@
     <string name="update_channel_stable_description">Určené na každodenné používanie</string>
     <string name="update_channel_beta_description">Skoršie aktualizácie, ktoré môžu obsahovať chyby, nefunkčné funkcie alebo sa správať neočakávane</string>
     <string name="advanced_player_stats_hud_subtitle">Zobraziť tlačidlo v informáciách o streame na zapnutie/vypnutie živých údajov o CPU, pamäti, vyrovnávacej pamäti, dátovom toku a teplote počas prehrávania</string>
-    <string name="profile_copy_settings_label">Kopírovať nastavenia</string>
-    <string name="profile_copy_settings_setup_title">Nastavenia profilu</string>
-    <string name="profile_copy_settings_setup_subtitle">Začnite odznova alebo jednorazovo skopírujte nastavenia TV z iného profilu.</string>
-    <string name="profile_copy_settings_start_fresh">Začať odznova</string>
-    <string name="profile_copy_settings_primary_source">%1$s (Hlavný)</string>
-    <string name="profile_copy_settings_create_fresh">Nastavenia: Začať odznova</string>
-    <string name="profile_copy_settings_create_source">Nastavenia: %1$s</string>
-    <string name="profile_copy_settings_title">Kopírovať nastavenia do profilu %1$s</string>
-    <string name="profile_copy_settings_subtitle">Vyberte zdrojový profil. Jeho podporované TV nastavenia jednorazovo nahradia nastavenia tohto profilu.</string>
-    <string name="profile_copy_settings_from">Kopírovať z</string>
-    <string name="profile_copy_settings_action">Kopírovať nastavenia</string>
-    <string name="profile_copy_settings_copying">Kopíruje sa\u2026</string>
-    <string name="profile_copy_settings_apply">Použiť</string>
-    <string name="profile_copy_settings_credentials_off">API kľúče: Nekopírovať</string>
-    <string name="profile_copy_settings_credentials_on">API kľúče: Kopírovať chýbajúce kľúče</string>
-    <string name="profile_copy_settings_details">Existujúce API kľúče budú zachované. OAuth, doplnky, pluginy, rozloženie domovskej obrazovky, PIN, história, knižnica, stiahnuté súbory a nastavenia špecifické pre zariadenie zostanú nezmenené.</string>
-    <string name="profile_copy_settings_exclusions">OAuth, doplnky, pluginy, rozloženie domovskej obrazovky, PIN, história, knižnica, stiahnuté súbory a nastavenia špecifické pre zariadenie zostanú nezmenené.</string>
-    <string name="profile_copy_settings_success">Nastavenia boli skopírované z profilu %1$s do %2$s.</string>
-    <string name="profile_copy_settings_error">Nepodarilo sa skopírovať nastavenia. Skontrolujte pripojenie a skúste to znova.</string>
-    <string name="profile_copy_settings_created_success">Profil bol vytvorený s nastaveniami z profilu %1$s.</string>
-    <string name="profile_copy_settings_created_error">Profil bol vytvorený, ale nastavenia sa nepodarilo skopírovať. Môžete to skúsiť znova v Možnostiach profilu.</string>
     <string name="profile_create_error">Profil sa nepodarilo vytvoriť. Skúste to znova.</string>
     <string name="update_waiting_for_stable">Ďalšiu stabilnú verziu dostanete hneď, ako bude k dispozícii</string>
 </resources>
