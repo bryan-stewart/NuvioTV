@@ -292,10 +292,12 @@ fun SettingsScreen(
                 SettingsCategory.DEBUG -> BuildConfig.IS_DEBUG_BUILD && !isEssentialMode
                 SettingsCategory.PROFILES -> isPrimaryProfileActive
                 SettingsCategory.ACCOUNT -> isPrimaryProfileActive
+                SettingsCategory.ABOUT -> isPrimaryProfileActive
+                SettingsCategory.ADVANCED -> isPrimaryProfileActive
                 SettingsCategory.LAYOUT -> true
-                SettingsCategory.CONTENT_DISCOVERY -> true
-                SettingsCategory.INTEGRATION -> true
-                SettingsCategory.ADVANCED -> true
+                SettingsCategory.CONTENT_DISCOVERY -> false
+                SettingsCategory.INTEGRATION -> false
+                SettingsCategory.TRACKING -> false
                 else -> true
             }
         }
