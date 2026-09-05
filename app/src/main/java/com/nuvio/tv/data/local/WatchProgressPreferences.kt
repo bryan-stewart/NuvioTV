@@ -68,7 +68,7 @@ class WatchProgressPreferences @Inject constructor(
     private val deltaCursorKey = longPreferencesKey("watch_progress_delta_cursor")
     private val deltaInitializedKey = booleanPreferencesKey("watch_progress_delta_initialized")
     private val storageMutex = Mutex()
-    private val initializedProfiles = mutableSetOf<Int>()
+    private val initializedProfiles = mutableSetOf<String>()
     private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
 
     @Volatile private var recentMapCache: ProgressMapCache? = null
