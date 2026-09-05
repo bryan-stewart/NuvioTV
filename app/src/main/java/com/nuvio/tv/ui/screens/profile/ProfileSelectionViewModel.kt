@@ -15,6 +15,7 @@ import com.nuvio.tv.data.remote.supabase.ProfileBackgroundRepository
 import com.nuvio.tv.data.remote.supabase.SupabaseProfilePinVerifyResult
 import com.nuvio.tv.data.repository.MemberAccessRepository
 import com.nuvio.tv.domain.model.CosmeticEntitlement
+import com.nuvio.tv.domain.model.ServerConfiguration
 import com.nuvio.tv.domain.model.UserProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -48,10 +49,19 @@ class ProfileSelectionViewModel @Inject constructor(
     private val avatarRepository: AvatarRepository,
     private val profileBackgroundRepository: ProfileBackgroundRepository,
     memberAccessRepository: MemberAccessRepository,
-    private val profileLockStateDataStore: ProfileLockStateDataStore
+    private val profileLockStateDataStore: ProfileLockStateDataStore,
+    private val serverConfiguration: ServerConfiguration
 ) : ViewModel() {
     val activeProfileId: StateFlow<String> = profileManager.activeProfileId
     val profiles: StateFlow<List<UserProfile>> = profileManager.profiles
+
+    // Where to send a Manager to remove an account-holding member — deleting
+    // someone's login isn't a thing this device can do on their behalf, so
+    // the delete dialog for an is_account profile points here instead of
+    // deleting anything itself. The dashboard's household settings page
+    // lives on the same backend host the client already knows.
+    val manageHouseholdUrl: String
+        get() = "${serverConfiguration.backendUrl.trimEnd('/')}/settings"
 
     val canAddProfile: Boolean
         get() = profileManager.canCreateProfile
@@ -80,9 +90,6 @@ class ProfileSelectionViewModel @Inject constructor(
 
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
-
-    private val _isCopyingSettings = MutableStateFlow(false)
-    val isCopyingSettings: StateFlow<Boolean> = _isCopyingSettings.asStateFlow()
 
     val profilePinEnabled: StateFlow<Map<String, Boolean>> = profileLockStateDataStore.pinEnabled
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
@@ -182,28 +189,6 @@ class ProfileSelectionViewModel @Inject constructor(
                 CreateProfileResult.Failed
             } finally {
                 _isCreating.value = false
-            }
-            onComplete(result)
-        }
-    }
-
-    fun copyProfileSettings(
-        sourceProfileId: String,
-        targetProfileId: String,
-        copyProviderCredentials: Boolean,
-        onComplete: (Result<Unit>) -> Unit
-    ) {
-        if (_isCopyingSettings.value) return
-        viewModelScope.launch {
-            _isCopyingSettings.value = true
-            val result = try {
-                profileSettingsSyncService.copyProfileSetup(
-                    sourceProfileId = sourceProfileId,
-                    targetProfileId = targetProfileId,
-                    copyProviderCredentials = copyProviderCredentials
-                )
-            } finally {
-                _isCopyingSettings.value = false
             }
             onComplete(result)
         }

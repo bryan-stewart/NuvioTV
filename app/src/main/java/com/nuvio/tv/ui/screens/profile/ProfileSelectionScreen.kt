@@ -198,7 +198,6 @@ fun ProfileSelectionScreen(
     val hasProfileBackgroundAccess by viewModel.hasProfileBackgroundAccess.collectAsState()
     val isCreating by viewModel.isCreating.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
-    val isCopyingSettings by viewModel.isCopyingSettings.collectAsState()
     val profilePinEnabled by viewModel.profilePinEnabled.collectAsState()
     val isPinOperationInProgress by viewModel.isPinOperationInProgress.collectAsState()
     val avatarImageUrlsById = remember(avatarCatalog, profiles) {
@@ -220,8 +219,6 @@ fun ProfileSelectionScreen(
     var suppressOptionsDialogFirstKeyUp by remember { mutableStateOf(true) }
     var profileToDelete by remember { mutableStateOf<UserProfile?>(null) }
     var profileToEdit by remember { mutableStateOf<UserProfile?>(null) }
-    var settingsCopyTarget by remember { mutableStateOf<UserProfile?>(null) }
-    var settingsCopyError by remember { mutableStateOf<String?>(null) }
     var pinOverlayState by remember { mutableStateOf<ProfilePinOverlayState?>(null) }
     var pinOverlayError by remember { mutableStateOf<String?>(null) }
     var profileActionMessage by remember { mutableStateOf<String?>(null) }
@@ -599,12 +596,21 @@ fun ProfileSelectionScreen(
                     Text(stringResource(R.string.profile_edit_label))
                 }
 
-                if (profiles.size > 1) {
+                // A PIN gates a Manager acting on someone else's behalf — it
+                // makes no sense on a profile with its own real login (an
+                // account holder already has their own password), and the
+                // backend refuses to set one there regardless. See
+                // set_profile_pin's own check.
+                if (!profile.isAccount) {
                     Button(
                         onClick = {
                             longPressedProfile = null
-                            settingsCopyError = null
-                            settingsCopyTarget = profile
+                            pinOverlayError = null
+                            pinOverlayState = if (profilePinEnabled[profile.id] == true) {
+                                ProfilePinOverlayState.VerifyCurrentForChange(profile)
+                            } else {
+                                ProfilePinOverlayState.Set(profile)
+                            }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.colors(
@@ -612,33 +618,14 @@ fun ProfileSelectionScreen(
                             contentColor = NuvioTheme.colors.TextPrimary
                         )
                     ) {
-                        Text(stringResource(R.string.profile_copy_settings_label))
+                        Text(
+                            if (profilePinEnabled[profile.id] == true) {
+                                stringResource(R.string.profile_pin_change)
+                            } else {
+                                stringResource(R.string.profile_pin_set)
+                            }
+                        )
                     }
-                }
-
-                Button(
-                    onClick = {
-                        longPressedProfile = null
-                        pinOverlayError = null
-                        pinOverlayState = if (profilePinEnabled[profile.id] == true) {
-                            ProfilePinOverlayState.VerifyCurrentForChange(profile)
-                        } else {
-                            ProfilePinOverlayState.Set(profile)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.colors(
-                        containerColor = NuvioTheme.colors.BackgroundCard,
-                        contentColor = NuvioTheme.colors.TextPrimary
-                    )
-                ) {
-                    Text(
-                        if (profilePinEnabled[profile.id] == true) {
-                            stringResource(R.string.profile_pin_change)
-                        } else {
-                            stringResource(R.string.profile_pin_set)
-                        }
-                    )
                 }
 
                 if (profilePinEnabled[profile.id] == true) {
@@ -681,67 +668,64 @@ fun ProfileSelectionScreen(
             }
         }
 
-        settingsCopyTarget?.let { targetProfile ->
-            CopyProfileSettingsDialog(
-                profiles = profiles,
-                targetProfile = targetProfile,
-                isCopying = isCopyingSettings,
-                errorMessage = settingsCopyError,
-                onDismiss = {
-                    settingsCopyError = null
-                    settingsCopyTarget = null
-                },
-                onCopy = { sourceProfileId, copyProviderCredentials ->
-                    settingsCopyError = null
-                    val sourceName = profiles.firstOrNull { it.id == sourceProfileId }?.name.orEmpty()
-                    viewModel.copyProfileSettings(
-                        sourceProfileId = sourceProfileId,
-                        targetProfileId = targetProfile.id,
-                        copyProviderCredentials = copyProviderCredentials
-                    ) { result ->
-                        if (result.isSuccess) {
-                            settingsCopyTarget = null
-                            profileActionMessage = context.getString(
-                                R.string.profile_copy_settings_success,
-                                sourceName,
-                                targetProfile.name
-                            )
-                        } else {
-                            settingsCopyError = context.getString(R.string.profile_copy_settings_error)
-                        }
-                    }
-                }
-            )
-        }
-
-        // Delete confirmation dialog
+        // Delete confirmation dialog — an is_account profile has its own
+        // real login, so there's nothing this device can delete on their
+        // behalf; it points the Manager at the dashboard instead of
+        // offering a destructive action at all.
         profileToDelete?.let { profile ->
             val primaryDialogFocusRequester = remember(profile.id) { FocusRequester() }
             LaunchedEffect(profile.id) {
                 repeat(2) { withFrameNanos { } }
                 runCatching { primaryDialogFocusRequester.requestFocus() }
             }
-            NuvioDialog(
-                onDismiss = { profileToDelete = null },
-                title = stringResource(R.string.profile_delete_confirm_title),
-                subtitle = stringResource(R.string.profile_delete_confirm_subtitle),
-                width = 420.dp,
-                suppressFirstKeyUp = false
-            ) {
-                Button(
-                    onClick = {
-                        viewModel.deleteProfile(profile.id)
-                        profileToDelete = null
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(primaryDialogFocusRequester),
-                    colors = ButtonDefaults.colors(
-                        containerColor = Color(0xFF4A2323),
-                        contentColor = NuvioTheme.colors.TextPrimary
-                    )
+            if (profile.isAccount) {
+                NuvioDialog(
+                    onDismiss = { profileToDelete = null },
+                    title = stringResource(R.string.profile_delete_account_blocked_title),
+                    subtitle = stringResource(
+                        R.string.profile_delete_account_blocked_subtitle,
+                        profile.name,
+                        viewModel.manageHouseholdUrl
+                    ),
+                    width = 420.dp,
+                    suppressFirstKeyUp = false
                 ) {
-                    Text(stringResource(R.string.profile_delete_btn))
+                    Button(
+                        onClick = { profileToDelete = null },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(primaryDialogFocusRequester),
+                        colors = ButtonDefaults.colors(
+                            containerColor = NuvioTheme.colors.BackgroundCard,
+                            contentColor = NuvioTheme.colors.TextPrimary
+                        )
+                    ) {
+                        Text(stringResource(R.string.profile_delete_account_blocked_dismiss))
+                    }
+                }
+            } else {
+                NuvioDialog(
+                    onDismiss = { profileToDelete = null },
+                    title = stringResource(R.string.profile_delete_confirm_title),
+                    subtitle = stringResource(R.string.profile_delete_confirm_subtitle),
+                    width = 420.dp,
+                    suppressFirstKeyUp = false
+                ) {
+                    Button(
+                        onClick = {
+                            viewModel.deleteProfile(profile.id)
+                            profileToDelete = null
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(primaryDialogFocusRequester),
+                        colors = ButtonDefaults.colors(
+                            containerColor = Color(0xFF4A2323),
+                            contentColor = NuvioTheme.colors.TextPrimary
+                        )
+                    ) {
+                        Text(stringResource(R.string.profile_delete_btn))
+                    }
                 }
             }
         }

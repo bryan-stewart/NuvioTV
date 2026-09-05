@@ -2171,6 +2171,9 @@
     <string name="profile_delete_confirm_title">Delete Profile?</string>
     <string name="profile_delete_confirm_subtitle">This will permanently delete this profile and all its data including library, watch history, and addon settings. This cannot be undone.</string>
     <string name="profile_delete_btn">Delete Profile</string>
+    <string name="profile_delete_account_blocked_title">Can\'t Delete This Profile</string>
+    <string name="profile_delete_account_blocked_subtitle">%1$s has their own login, so it can\'t be deleted from this device. To remove them from your household, visit %2$s.</string>
+    <string name="profile_delete_account_blocked_dismiss">Got It</string>
     <string name="profile_saving">Saving\u2026</string>
 
     <string name="cast_detail_error">Something went wrong</string>
