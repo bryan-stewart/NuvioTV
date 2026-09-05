@@ -3221,25 +3221,4 @@
 
     <!-- Profile copy settings -->
     <string name="profile_create_error">Nie udało się utworzyć profilu. Spróbuj ponownie.</string>
-    <string name="profile_copy_settings_action">Kopiuj ustawienia</string>
-    <string name="profile_copy_settings_apply">Zastosuj</string>
-    <string name="profile_copy_settings_copying">Kopiowanie\u2026</string>
-    <string name="profile_copy_settings_create_fresh">Ustawienia: Zacznij od nowa</string>
-    <string name="profile_copy_settings_create_source">Ustawienia: %1$s</string>
-    <string name="profile_copy_settings_created_error">Profil utworzony, ale nie udało się skopiować ustawień. Możesz ponowić z opcji profilu.</string>
-    <string name="profile_copy_settings_created_success">Profil utworzony z ustawieniami z %1$s.</string>
-    <string name="profile_copy_settings_credentials_off">Klucze API: Nie kopiuj</string>
-    <string name="profile_copy_settings_credentials_on">Klucze API: Kopiuj brakujące klucze</string>
-    <string name="profile_copy_settings_details">Istniejące klucze API zostają zachowane. OAuth, dodatki, wtyczki, układ ekranu głównego, PIN, historia, biblioteka, pobrane i ustawienia urządzenia pozostają niezmienione.</string>
-    <string name="profile_copy_settings_error">Nie udało się skopiować ustawień. Sprawdź połączenie i spróbuj ponownie.</string>
-    <string name="profile_copy_settings_exclusions">OAuth, dodatki, wtyczki, układ ekranu głównego, PIN, historia, biblioteka, pobrane i ustawienia urządzenia pozostają niezmienione.</string>
-    <string name="profile_copy_settings_from">Kopiuj z</string>
-    <string name="profile_copy_settings_label">Kopiuj ustawienia</string>
-    <string name="profile_copy_settings_primary_source">%1$s (Główny)</string>
-    <string name="profile_copy_settings_setup_subtitle">Zacznij od nowa lub jednorazowo skopiuj ustawienia TV z innego profilu.</string>
-    <string name="profile_copy_settings_setup_title">Ustawienia profilu</string>
-    <string name="profile_copy_settings_start_fresh">Zacznij od nowa</string>
-    <string name="profile_copy_settings_subtitle">Wybierz profil źródłowy. Jego obsługiwane ustawienia TV jednorazowo zastąpią ustawienia tego profilu.</string>
-    <string name="profile_copy_settings_success">Ustawienia skopiowane z %1$s do %2$s.</string>
-    <string name="profile_copy_settings_title">Kopiuj ustawienia do %1$s</string>
 </resources>

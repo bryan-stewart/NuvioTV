@@ -922,11 +922,9 @@
 
     <!-- AuthQrSignInScreen -->
     <string name="auth_qr_title">Iniciar sesión con QR</string>
-    <string name="auth_qr_account_login">Inicio de sesión de cuenta</string>
     <string name="auth_qr_finishing">Finalizando inicio de sesión\u2026</string>
     <string name="auth_qr_code_label">Código: %1$s</string>
     <string name="auth_qr_expires">Caduca en %1$s</string>
-    <string name="auth_qr_phone_hint">Usa tu teléfono para iniciar sesión con correo/contraseña. La TV se queda solo con QR para un inicio más rápido.</string>
     <string name="auth_qr_scan_instruction">Escanea el QR, aprueba en el navegador y luego vuelve aquí.</string>
     <string name="auth_qr_code_display">Código: %1$s</string>
     <string name="auth_qr_refresh">Actualizar QR</string>
@@ -1942,7 +1940,6 @@
     <string name="collections_editor_tmdb_quick_keywords">Palabras clave rápidas</string>
     <string name="collections_editor_tmdb_quick_languages">Idiomas rápidos</string>
     <string name="collections_editor_tmdb_quick_networks">Redes rápidas</string>
-    <string name="collections_editor_tmdb_quick_providers">Proveedores rápidos</string>
     <string name="collections_editor_tmdb_quick_watch_providers">Proveedores de visionado rápidos</string>
     <string name="collections_editor_tmdb_quick_watch_regions">Regiones de visionado rápidas</string>
     <string name="collections_editor_tmdb_rating_max">Puntuación máxima</string>
@@ -2166,13 +2163,6 @@
     <!-- Subtitle loading / rendering -->
     <string name="sub_opacity">Opacidad</string>
     <string name="sub_mode_overlay_canvas_sub">Soporte HDR con renderizado Canvas. Puede bloquear el hilo de la interfaz.</string>
-    <string name="sub_startup_mode_title">Carga de subtítulos de complementos</string>
-    <string name="sub_startup_mode_fast">Inicio rápido</string>
-    <string name="sub_startup_mode_preferred">Idiomas preferidos</string>
-    <string name="sub_startup_mode_all">Todos los subtítulos del complemento</string>
-    <string name="sub_startup_mode_fast_desc">Inicia la reproducción de inmediato. Seleccionar subtítulos del complemento puede recargar el reproductor una vez.</string>
-    <string name="sub_startup_mode_preferred_desc">Precarga los subtítulos del complemento antes de la reproducción y adjunta las pistas de idioma preferido/secundario.</string>
-    <string name="sub_startup_mode_all_desc">Precarga y adjunta todos los subtítulos del complemento antes de la reproducción. Es el inicio más lento.</string>
 
     <!-- Subtitle timing / styling -->
     <string name="subtitle_auto_sync_select_addon_track">Selecciona primero una pista de subtítulos del complemento para usar Sincronización automática.</string>
