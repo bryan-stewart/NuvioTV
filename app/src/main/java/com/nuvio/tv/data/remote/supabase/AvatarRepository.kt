@@ -28,6 +28,8 @@ import javax.inject.Singleton
 
 private const val MemberAvatarBucket = "membership-profile-avatars"
 private const val MemberAvatarTag = "MemberAvatars"
+private const val HouseholdAvatarBucket = "household-avatars"
+private const val HouseholdAvatarTag = "HouseholdAvatars"
 private const val AvatarCatalogRefreshIntervalMs = 15 * 60_000L
 
 internal fun isAvatarCatalogRefreshDue(lastRefreshAtMs: Long, nowMs: Long): Boolean {
@@ -152,6 +154,56 @@ class AvatarRepository @Inject constructor(
     fun getAvatarImageUrl(avatarId: String, catalog: List<AvatarCatalogItem>): String? {
         return catalog.find { it.id == avatarId }?.imageUrl
             ?: latestCachedMemberAvatar(avatarId)?.toURI()?.toString()
+    }
+
+    // sync_pull_profiles's own avatar_url, when present, is a path in the
+    // private "household-avatars" bucket (a Manager or the profile's own
+    // custom upload) — never a ready-to-fetch public URL the way a catalog
+    // pick's avatar_id resolves to. Every read needs an authenticated
+    // request, same shape as the supporter-avatar bucket above, so this
+    // downloads once and caches to a local file the same way. Returns null
+    // (rather than throwing) on any failure — a household avatar that
+    // can't be fetched right now should just fall back to the plain
+    // colour+initial circle, never crash the screen it's on.
+    suspend fun getHouseholdAvatarImageUri(storagePath: String): String? {
+        if (storagePath.isBlank()) return null
+        return try {
+            cacheHouseholdAvatar(storagePath).toURI().toString()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.w(HouseholdAvatarTag, "Unable to load household avatar at $storagePath", error)
+            null
+        }
+    }
+
+    private suspend fun cacheHouseholdAvatar(storagePath: String): File = withContext(Dispatchers.IO) {
+        val imageFile = householdAvatarFile(storagePath)
+        if (imageFile.isFile && imageFile.length() > 0L) return@withContext imageFile
+
+        val directory = imageFile.parentFile ?: return@withContext imageFile
+        directory.mkdirs()
+        val imageBytes = storage[HouseholdAvatarBucket].downloadAuthenticated(storagePath)
+        val temporaryFile = directory.resolve(".${imageFile.name}.tmp")
+        temporaryFile.writeBytes(imageBytes)
+        if (!temporaryFile.renameTo(imageFile)) {
+            temporaryFile.copyTo(imageFile, overwrite = true)
+            temporaryFile.delete()
+        }
+        imageFile
+    }
+
+    // The storage path itself already changes on every replace (a fresh
+    // random filename per upload — see the dashboard's own upload code),
+    // so hashing it straight into the cache filename makes a changed
+    // avatar an automatic cache miss with no separate version number to
+    // track, unlike memberAvatarFile's assetVersion above.
+    private fun householdAvatarFile(storagePath: String): File {
+        val extension = storagePath.substringAfterLast('.', "img")
+            .takeIf { it.length in 2..5 && it.all(Char::isLetterOrDigit) }
+            ?: "img"
+        val key = storagePath.hashCode().toUInt().toString(16)
+        return context.cacheDir.resolve("household_avatars/$key.$extension")
     }
 
     fun invalidateCache() {

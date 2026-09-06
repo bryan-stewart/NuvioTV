@@ -61,7 +61,7 @@ class LayoutPreferenceDataStore @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private fun store(profileId: Int = profileManager.activeProfileId.value) =
+    private fun store(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, FEATURE)
 
     private val gson = Gson()
@@ -193,7 +193,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     val homeCatalogOrderKeys: Flow<List<String>> = profileManager.activeProfileId.flatMapLatest { pid ->
         val profile = profileManager.profiles.value.find { it.id == pid }
         val usePrimary = profile != null && !profile.isPrimary && profile.usesPrimaryAddons
-        val effectivePid = if (usePrimary) 1 else pid
+        val effectivePid = if (usePrimary) (profileManager.profiles.value.firstOrNull { it.isManager }?.id ?: pid) else pid
         factory.get(effectivePid, FEATURE).data.map { prefs ->
             parseCatalogKeys(prefs.getStringOrMigrateSet(homeCatalogOrderKeysKey))
         }
@@ -202,7 +202,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     val disabledHomeCatalogKeys: Flow<List<String>> = profileManager.activeProfileId.flatMapLatest { pid ->
         val profile = profileManager.profiles.value.find { it.id == pid }
         val usePrimary = profile != null && !profile.isPrimary && profile.usesPrimaryAddons
-        val effectivePid = if (usePrimary) 1 else pid
+        val effectivePid = if (usePrimary) (profileManager.profiles.value.firstOrNull { it.isManager }?.id ?: pid) else pid
         factory.get(effectivePid, FEATURE).data.map { prefs ->
             parseCatalogKeys(prefs.getStringOrMigrateSet(disabledHomeCatalogKeysKey))
         }
@@ -211,20 +211,14 @@ class LayoutPreferenceDataStore @Inject constructor(
     val customCatalogTitles: Flow<Map<String, String>> = profileManager.activeProfileId.flatMapLatest { pid ->
         val profile = profileManager.profiles.value.find { it.id == pid }
         val usePrimary = profile != null && !profile.isPrimary && profile.usesPrimaryAddons
-        val effectivePid = if (usePrimary) 1 else pid
+        val effectivePid = if (usePrimary) (profileManager.profiles.value.firstOrNull { it.isManager }?.id ?: pid) else pid
         factory.get(effectivePid, FEATURE).data.map { prefs ->
             parseCustomTitles(prefs.getStringOrMigrateSet(customCatalogTitlesKey))
         }
     }
 
     val sidebarCollapsedByDefault: Flow<Boolean> = profileFlow { prefs ->
-        val modernSidebarEnabled =
-            prefs[modernSidebarEnabledKey] ?: prefs[legacyModernSidebarEnabledKey] ?: false
-        if (modernSidebarEnabled) {
-            false
-        } else {
-            prefs[sidebarCollapsedKey] ?: false
-        }
+        prefs[sidebarCollapsedKey] ?: false
     }
 
     val modernSidebarEnabled: Flow<Boolean> = profileFlow { prefs ->
@@ -502,9 +496,7 @@ class LayoutPreferenceDataStore @Inject constructor(
 
     suspend fun setSidebarCollapsedByDefault(collapsed: Boolean) {
         store().edit { prefs ->
-            val modernSidebarEnabled =
-                prefs[modernSidebarEnabledKey] ?: prefs[legacyModernSidebarEnabledKey] ?: false
-            prefs[sidebarCollapsedKey] = if (modernSidebarEnabled) false else collapsed
+            prefs[sidebarCollapsedKey] = collapsed
         }
     }
 
@@ -512,9 +504,6 @@ class LayoutPreferenceDataStore @Inject constructor(
         store().edit { prefs ->
             prefs[modernSidebarEnabledKey] = enabled
             prefs.remove(legacyModernSidebarEnabledKey)
-            if (enabled) {
-                prefs[sidebarCollapsedKey] = false
-            }
         }
     }
 

@@ -53,7 +53,7 @@ data class SyncHomeCatalogPayload(
 
 private data class HomeCatalogSyncScope(
     val userId: String,
-    val profileId: Int
+    val profileId: String
 )
 
 private data class CachedSharedSettings(
@@ -213,7 +213,7 @@ class HomeCatalogSettingsSyncService @Inject constructor(
         cachedSharedSettings = CachedSharedSettings(scope = syncScope, settingsJson = jsonElement)
     }
 
-    private suspend fun fetchRemoteBlob(profileId: Int): SupabaseHomeCatalogSettingsBlob? {
+    private suspend fun fetchRemoteBlob(profileId: String): SupabaseHomeCatalogSettingsBlob? {
         val params = buildJsonObject {
             put("p_profile_id", profileId)
             put("p_platform", HOME_CATALOG_SHARED_SYNC_PLATFORM)
@@ -249,7 +249,7 @@ class HomeCatalogSettingsSyncService @Inject constructor(
         return mergeHomeCatalogSettingsJson(remoteJson, localJson)
     }
 
-    private fun currentScope(profileId: Int): HomeCatalogSyncScope? {
+    private fun currentScope(profileId: String): HomeCatalogSyncScope? {
         val state = authManager.authState.value as? AuthState.FullAccount ?: return null
         if (profileManager.activeProfileId.value != profileId) return null
         return HomeCatalogSyncScope(userId = state.userId, profileId = profileId)

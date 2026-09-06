@@ -11,13 +11,13 @@ class ProfileBackgroundTest {
 
     @Test
     fun profilesWithoutASelectionUseTheLegacyBackground() {
-        assertNull(resolveProfileBackgroundSelection(profile(id = 1), backgroundAccess))
-        assertNull(resolveProfileBackgroundSelection(profile(id = 2), backgroundAccess))
+        assertNull(resolveProfileBackgroundSelection(profile(id = "1"), backgroundAccess))
+        assertNull(resolveProfileBackgroundSelection(profile(id = "2"), backgroundAccess))
     }
 
     @Test
     fun savedSelectionIsRenderedForMembers() {
-        val profile = profile(id = 1, backgroundId = "graphite")
+        val profile = profile(id = "1", backgroundId = "graphite")
 
         assertEquals(
             ProfileBackgroundSelection.Catalog("graphite"),
@@ -27,7 +27,7 @@ class ProfileBackgroundTest {
 
     @Test
     fun customBackgroundIsRenderedForMembers() {
-        val profile = profile(id = 1, backgroundUrl = "https://example.com/background.jpg")
+        val profile = profile(id = "1", backgroundUrl = "https://example.com/background.jpg")
 
         assertEquals(
             ProfileBackgroundSelection.Custom("https://example.com/background.jpg"),
@@ -38,7 +38,7 @@ class ProfileBackgroundTest {
     @Test
     fun customBackgroundWinsOverCatalogSelection() {
         val profile = profile(
-            id = 1,
+            id = "1",
             backgroundId = "jade",
             backgroundUrl = "https://example.com/background.jpg"
         )
@@ -51,13 +51,13 @@ class ProfileBackgroundTest {
 
     @Test
     fun unavailableEntitlementHidesSavedSelection() {
-        val profile = profile(id = 1, backgroundId = "jade")
+        val profile = profile(id = "1", backgroundId = "jade")
 
         assertNull(resolveProfileBackgroundSelection(profile, CosmeticEntitlements.None))
     }
 
     private fun profile(
-        id: Int,
+        id: String,
         backgroundId: String? = null,
         backgroundUrl: String? = null
     ) = UserProfile(

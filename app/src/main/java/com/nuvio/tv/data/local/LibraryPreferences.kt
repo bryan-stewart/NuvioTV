@@ -42,7 +42,7 @@ class LibraryPreferences @Inject constructor(
     private val pendingDeleteKeysKey = stringSetPreferencesKey("library_pending_deletes")
     private val mutationRevisionKey = longPreferencesKey("library_mutation_revision")
 
-    private fun store(profileId: Int = profileManager.activeProfileId.value) =
+    private fun store(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, FEATURE)
 
     val sortOption: Flow<String?> = profileManager.activeProfileId.flatMapLatest { profileId ->
@@ -99,7 +99,7 @@ class LibraryPreferences @Inject constructor(
     suspend fun containsItem(
         itemId: String,
         itemType: String,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ): Boolean {
         return getSyncState(profileId).items.any { item ->
             item.id == itemId && item.type.equals(itemType, ignoreCase = true)
@@ -108,7 +108,7 @@ class LibraryPreferences @Inject constructor(
 
     suspend fun addItem(
         item: SavedLibraryItem,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ) {
         store(profileId).edit { preferences ->
             val updated = LibrarySyncReducer.upsertLocal(
@@ -123,7 +123,7 @@ class LibraryPreferences @Inject constructor(
     suspend fun removeItem(
         itemId: String,
         itemType: String,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ) {
         store(profileId).edit { preferences ->
             val updated = LibrarySyncReducer.deleteLocal(
@@ -136,7 +136,7 @@ class LibraryPreferences @Inject constructor(
     }
 
     suspend fun getAllItems(
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ): List<SavedLibraryItem> {
         return getSyncState(profileId).items
     }
@@ -145,7 +145,7 @@ class LibraryPreferences @Inject constructor(
         id: String,
         type: String,
         logo: String,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ) {
         store(profileId).edit { preferences ->
             val state = preferences.toLibrarySyncState()
@@ -160,12 +160,12 @@ class LibraryPreferences @Inject constructor(
         }
     }
 
-    override suspend fun getSyncState(profileId: Int): LibrarySyncState {
+    override suspend fun getSyncState(profileId: String): LibrarySyncState {
         return store(profileId).data.first().toLibrarySyncState()
     }
 
     override suspend fun applyRemoteSnapshot(
-        profileId: Int,
+        profileId: String,
         remoteItems: Collection<SavedLibraryItem>,
         cursorEventId: Long
     ): LibrarySnapshotApplyResult {
@@ -182,7 +182,7 @@ class LibraryPreferences @Inject constructor(
     }
 
     override suspend fun applyRemoteDelta(
-        profileId: Int,
+        profileId: String,
         events: Collection<LibraryDeltaEvent>
     ): LibraryDeltaApplyResult {
         lateinit var result: LibraryDeltaApplyResult
@@ -196,7 +196,7 @@ class LibraryPreferences @Inject constructor(
         return result
     }
 
-    override suspend fun queueAllItemsForPush(profileId: Int): LibrarySyncState {
+    override suspend fun queueAllItemsForPush(profileId: String): LibrarySyncState {
         lateinit var result: LibrarySyncState
         store(profileId).edit { preferences ->
             result = LibrarySyncReducer.queueAllItemsForPush(
@@ -208,7 +208,7 @@ class LibraryPreferences @Inject constructor(
     }
 
     override suspend fun acknowledgePush(
-        profileId: Int,
+        profileId: String,
         expectedMutationRevision: Long
     ): Boolean {
         var acknowledged = false

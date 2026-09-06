@@ -409,33 +409,40 @@ private fun AuthQrLoginPane(
                     )
                 }
             }
-            Button(
-                onClick = onBackOrContinue,
-                modifier = if (!focusEmail && !focusMainAction) {
-                    Modifier.focusRequester(initialFocusRequester)
-                } else {
-                    Modifier
-                },
-                colors = ButtonDefaults.colors(
-                    containerColor = AuthSecondaryButtonBackground,
-                    focusedContainerColor = Color.White,
-                    contentColor = AuthTextPrimary,
-                    focusedContentColor = Color.Black
-                ),
-                border = ButtonDefaults.border(
-                    border = androidx.tv.material3.Border(
-                        border = androidx.compose.foundation.BorderStroke(1.dp, AuthSecondaryButtonBorder),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                )
-            ) {
-                Text(
-                    if (isOnboardingMode) {
-                        if (isSignedIn) stringResource(R.string.auth_qr_continue) else stringResource(R.string.auth_qr_continue_without_account)
+            // No "continue without account" bypass here — this backend has
+            // no notion of a local-only account, so the onboarding screen
+            // only ever shows this button once actually signed in (a
+            // redundant safety net alongside the auto-continue effect
+            // above) or outside onboarding, where it's just "Back".
+            if (!isOnboardingMode || isSignedIn) {
+                Button(
+                    onClick = onBackOrContinue,
+                    modifier = if (!focusEmail && !focusMainAction) {
+                        Modifier.focusRequester(initialFocusRequester)
                     } else {
-                        stringResource(R.string.auth_qr_back)
-                    }
-                )
+                        Modifier
+                    },
+                    colors = ButtonDefaults.colors(
+                        containerColor = AuthSecondaryButtonBackground,
+                        focusedContainerColor = Color.White,
+                        contentColor = AuthTextPrimary,
+                        focusedContentColor = Color.Black
+                    ),
+                    border = ButtonDefaults.border(
+                        border = androidx.tv.material3.Border(
+                            border = androidx.compose.foundation.BorderStroke(1.dp, AuthSecondaryButtonBorder),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                    )
+                ) {
+                    Text(
+                        if (isOnboardingMode) {
+                            stringResource(R.string.auth_qr_continue)
+                        } else {
+                            stringResource(R.string.auth_qr_back)
+                        }
+                    )
+                }
             }
         }
     }

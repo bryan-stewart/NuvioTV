@@ -3,7 +3,7 @@ package com.nuvio.tv.data.simkl
 import kotlinx.coroutines.flow.StateFlow
 
 data class SimklAuthScope(
-    val profileId: Int,
+    val profileId: String,
     val generation: Long
 )
 
@@ -40,6 +40,6 @@ interface SimklAuthStorage {
         scope: SimklAuthScope = currentScope(),
         expectedAccessToken: String? = null
     ): Boolean
-    fun removeProfile(profileId: Int)
+    fun removeProfile(profileId: String)
     fun clearAllProfiles()
 }

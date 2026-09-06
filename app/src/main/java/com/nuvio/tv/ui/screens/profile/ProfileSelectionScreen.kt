@@ -198,7 +198,6 @@ fun ProfileSelectionScreen(
     val hasProfileBackgroundAccess by viewModel.hasProfileBackgroundAccess.collectAsState()
     val isCreating by viewModel.isCreating.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
-    val isCopyingSettings by viewModel.isCopyingSettings.collectAsState()
     val profilePinEnabled by viewModel.profilePinEnabled.collectAsState()
     val isPinOperationInProgress by viewModel.isPinOperationInProgress.collectAsState()
     val avatarImageUrlsById = remember(avatarCatalog, profiles) {
@@ -209,19 +208,18 @@ fun ProfileSelectionScreen(
             }
         }
     }
+    val householdAvatarUrisById by viewModel.householdAvatarUrisById.collectAsState()
     val profileBackgroundsById = remember(profileBackgroundCatalog) {
         profileBackgroundCatalog.associateBy { it.id }
     }
     val memberAccess = Membership.access
     var focusedAvatarColor by remember { mutableStateOf(Color(0xFF1E88E5)) }
-    var focusedProfileId by remember { mutableStateOf<Int?>(null) }
+    var focusedProfileId by remember { mutableStateOf<String?>(null) }
     var showCreateProfile by remember { mutableStateOf(false) }
     var longPressedProfile by remember { mutableStateOf<UserProfile?>(null) }
     var suppressOptionsDialogFirstKeyUp by remember { mutableStateOf(true) }
     var profileToDelete by remember { mutableStateOf<UserProfile?>(null) }
     var profileToEdit by remember { mutableStateOf<UserProfile?>(null) }
-    var settingsCopyTarget by remember { mutableStateOf<UserProfile?>(null) }
-    var settingsCopyError by remember { mutableStateOf<String?>(null) }
     var pinOverlayState by remember { mutableStateOf<ProfilePinOverlayState?>(null) }
     var pinOverlayError by remember { mutableStateOf<String?>(null) }
     var profileActionMessage by remember { mutableStateOf<String?>(null) }
@@ -332,6 +330,7 @@ fun ProfileSelectionScreen(
                     canAddProfile = viewModel.canAddProfile,
                     profilePinEnabled = profilePinEnabled,
                     avatarImageUrlsById = avatarImageUrlsById,
+                    householdAvatarUrisById = householdAvatarUrisById,
                     onProfileFocused = onProfileFocusedChange,
                     onProfileSelected = { profile ->
                         if (isManagementMode) {
@@ -485,28 +484,15 @@ fun ProfileSelectionScreen(
                 avatarCatalog = avatarCatalog,
                 isCreating = isCreating,
                 onDismiss = { if (!isCreating) showCreateProfile = false },
-                onCreateProfile = { name, colorHex, avatarId, copyFromProfileId, copyProviderCredentials ->
+                onCreateProfile = { name, colorHex, avatarId ->
                     viewModel.createProfile(
                         name = name,
                         avatarColorHex = colorHex,
-                        avatarId = avatarId,
-                        copyFromProfileId = copyFromProfileId,
-                        copyProviderCredentials = copyProviderCredentials
+                        avatarId = avatarId
                     ) { result ->
                         when (result) {
                             is CreateProfileResult.Created -> {
                                 showCreateProfile = false
-                                val sourceName = profiles.firstOrNull { it.id == copyFromProfileId }?.name
-                                if (result.settingsCopyResult?.isSuccess == true && sourceName != null) {
-                                    profileActionMessage = context.getString(
-                                        R.string.profile_copy_settings_created_success,
-                                        sourceName
-                                    )
-                                } else if (result.settingsCopyResult?.isFailure == true) {
-                                    profileActionMessage = context.getString(
-                                        R.string.profile_copy_settings_created_error
-                                    )
-                                }
                             }
                             CreateProfileResult.Failed -> {
                                 profileActionMessage = context.getString(R.string.profile_create_error)
@@ -599,12 +585,21 @@ fun ProfileSelectionScreen(
                     Text(stringResource(R.string.profile_edit_label))
                 }
 
-                if (profiles.size > 1) {
+                // A PIN gates a Manager acting on someone else's behalf — it
+                // makes no sense on a profile with its own real login (an
+                // account holder already has their own password), and the
+                // backend refuses to set one there regardless. See
+                // set_profile_pin's own check.
+                if (!profile.isAccount) {
                     Button(
                         onClick = {
                             longPressedProfile = null
-                            settingsCopyError = null
-                            settingsCopyTarget = profile
+                            pinOverlayError = null
+                            pinOverlayState = if (profilePinEnabled[profile.id] == true) {
+                                ProfilePinOverlayState.VerifyCurrentForChange(profile)
+                            } else {
+                                ProfilePinOverlayState.Set(profile)
+                            }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.colors(
@@ -612,33 +607,14 @@ fun ProfileSelectionScreen(
                             contentColor = NuvioTheme.colors.TextPrimary
                         )
                     ) {
-                        Text(stringResource(R.string.profile_copy_settings_label))
+                        Text(
+                            if (profilePinEnabled[profile.id] == true) {
+                                stringResource(R.string.profile_pin_change)
+                            } else {
+                                stringResource(R.string.profile_pin_set)
+                            }
+                        )
                     }
-                }
-
-                Button(
-                    onClick = {
-                        longPressedProfile = null
-                        pinOverlayError = null
-                        pinOverlayState = if (profilePinEnabled[profile.id] == true) {
-                            ProfilePinOverlayState.VerifyCurrentForChange(profile)
-                        } else {
-                            ProfilePinOverlayState.Set(profile)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.colors(
-                        containerColor = NuvioTheme.colors.BackgroundCard,
-                        contentColor = NuvioTheme.colors.TextPrimary
-                    )
-                ) {
-                    Text(
-                        if (profilePinEnabled[profile.id] == true) {
-                            stringResource(R.string.profile_pin_change)
-                        } else {
-                            stringResource(R.string.profile_pin_set)
-                        }
-                    )
                 }
 
                 if (profilePinEnabled[profile.id] == true) {
@@ -681,67 +657,64 @@ fun ProfileSelectionScreen(
             }
         }
 
-        settingsCopyTarget?.let { targetProfile ->
-            CopyProfileSettingsDialog(
-                profiles = profiles,
-                targetProfile = targetProfile,
-                isCopying = isCopyingSettings,
-                errorMessage = settingsCopyError,
-                onDismiss = {
-                    settingsCopyError = null
-                    settingsCopyTarget = null
-                },
-                onCopy = { sourceProfileId, copyProviderCredentials ->
-                    settingsCopyError = null
-                    val sourceName = profiles.firstOrNull { it.id == sourceProfileId }?.name.orEmpty()
-                    viewModel.copyProfileSettings(
-                        sourceProfileId = sourceProfileId,
-                        targetProfileId = targetProfile.id,
-                        copyProviderCredentials = copyProviderCredentials
-                    ) { result ->
-                        if (result.isSuccess) {
-                            settingsCopyTarget = null
-                            profileActionMessage = context.getString(
-                                R.string.profile_copy_settings_success,
-                                sourceName,
-                                targetProfile.name
-                            )
-                        } else {
-                            settingsCopyError = context.getString(R.string.profile_copy_settings_error)
-                        }
-                    }
-                }
-            )
-        }
-
-        // Delete confirmation dialog
+        // Delete confirmation dialog — an is_account profile has its own
+        // real login, so there's nothing this device can delete on their
+        // behalf; it points the Manager at the dashboard instead of
+        // offering a destructive action at all.
         profileToDelete?.let { profile ->
             val primaryDialogFocusRequester = remember(profile.id) { FocusRequester() }
             LaunchedEffect(profile.id) {
                 repeat(2) { withFrameNanos { } }
                 runCatching { primaryDialogFocusRequester.requestFocus() }
             }
-            NuvioDialog(
-                onDismiss = { profileToDelete = null },
-                title = stringResource(R.string.profile_delete_confirm_title),
-                subtitle = stringResource(R.string.profile_delete_confirm_subtitle),
-                width = 420.dp,
-                suppressFirstKeyUp = false
-            ) {
-                Button(
-                    onClick = {
-                        viewModel.deleteProfile(profile.id)
-                        profileToDelete = null
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(primaryDialogFocusRequester),
-                    colors = ButtonDefaults.colors(
-                        containerColor = Color(0xFF4A2323),
-                        contentColor = NuvioTheme.colors.TextPrimary
-                    )
+            if (profile.isAccount) {
+                NuvioDialog(
+                    onDismiss = { profileToDelete = null },
+                    title = stringResource(R.string.profile_delete_account_blocked_title),
+                    subtitle = stringResource(
+                        R.string.profile_delete_account_blocked_subtitle,
+                        profile.name,
+                        viewModel.manageHouseholdUrl
+                    ),
+                    width = 420.dp,
+                    suppressFirstKeyUp = false
                 ) {
-                    Text(stringResource(R.string.profile_delete_btn))
+                    Button(
+                        onClick = { profileToDelete = null },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(primaryDialogFocusRequester),
+                        colors = ButtonDefaults.colors(
+                            containerColor = NuvioTheme.colors.BackgroundCard,
+                            contentColor = NuvioTheme.colors.TextPrimary
+                        )
+                    ) {
+                        Text(stringResource(R.string.profile_delete_account_blocked_dismiss))
+                    }
+                }
+            } else {
+                NuvioDialog(
+                    onDismiss = { profileToDelete = null },
+                    title = stringResource(R.string.profile_delete_confirm_title),
+                    subtitle = stringResource(R.string.profile_delete_confirm_subtitle),
+                    width = 420.dp,
+                    suppressFirstKeyUp = false
+                ) {
+                    Button(
+                        onClick = {
+                            viewModel.deleteProfile(profile.id)
+                            profileToDelete = null
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(primaryDialogFocusRequester),
+                        colors = ButtonDefaults.colors(
+                            containerColor = Color(0xFF4A2323),
+                            contentColor = NuvioTheme.colors.TextPrimary
+                        )
+                    ) {
+                        Text(stringResource(R.string.profile_delete_btn))
+                    }
                 }
             }
         }
@@ -826,10 +799,11 @@ private fun ProfileSelectionMainContent(
     screenHint: String,
     isManagementMode: Boolean,
     profiles: List<UserProfile>,
-    activeProfileId: Int,
+    activeProfileId: String,
     canAddProfile: Boolean,
-    profilePinEnabled: Map<Int, Boolean>,
+    profilePinEnabled: Map<String, Boolean>,
     avatarImageUrlsById: Map<String, String>,
+    householdAvatarUrisById: Map<String, String>,
     onProfileFocused: (UserProfile?) -> Unit,
     onProfileSelected: (UserProfile) -> Unit,
     onProfileLongPress: (UserProfile) -> Unit,
@@ -877,6 +851,7 @@ private fun ProfileSelectionMainContent(
             canAddProfile = canAddProfile,
             profilePinEnabled = profilePinEnabled,
             avatarImageUrlsById = avatarImageUrlsById,
+            householdAvatarUrisById = householdAvatarUrisById,
             onProfileFocused = onProfileFocused,
             onProfileSelected = onProfileSelected,
             onProfileLongPress = onProfileLongPress,
@@ -894,14 +869,35 @@ private fun ProfileSelectionMainContent(
     }
 }
 
+// profile.avatarUrl is the household's own avatar assignment (see
+// sync_pull_profiles's own comment): either a plain http(s) catalog URL
+// (use as-is) or a bare path in the private "household-avatars" bucket for
+// a custom upload, which only householdAvatarUrisById (resolved via an
+// authenticated download, see ProfileSelectionViewModel) can turn into a
+// displayable URL. No avatarUrl at all falls back to the catalog pick by
+// avatarId, same as before this existed.
+private fun resolveProfileAvatarImageUrl(
+    profile: UserProfile,
+    avatarImageUrlsById: Map<String, String>,
+    householdAvatarUrisById: Map<String, String>
+): String? {
+    val avatarUrl = profile.avatarUrl?.takeIf { it.isNotBlank() }
+    return when {
+        avatarUrl == null -> profile.avatarId?.let(avatarImageUrlsById::get)
+        avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://") -> avatarUrl
+        else -> householdAvatarUrisById[profile.id]
+    }
+}
+
 @Composable
 private fun ProfileGrid(
     profiles: List<UserProfile>,
-    activeProfileId: Int,
+    activeProfileId: String,
     isManagementMode: Boolean,
     canAddProfile: Boolean,
-    profilePinEnabled: Map<Int, Boolean>,
+    profilePinEnabled: Map<String, Boolean>,
     avatarImageUrlsById: Map<String, String>,
+    householdAvatarUrisById: Map<String, String>,
     onProfileFocused: (UserProfile?) -> Unit,
     onProfileSelected: (UserProfile) -> Unit,
     onProfileLongPress: (UserProfile) -> Unit,
@@ -960,8 +956,11 @@ private fun ProfileGrid(
                 profiles.forEachIndexed { index, profile ->
                     ProfileCard(
                         profile = profile,
-                        avatarImageUrl = profile.avatarUrl?.takeIf { it.isNotBlank() }
-                            ?: profile.avatarId?.let(avatarImageUrlsById::get),
+                        avatarImageUrl = resolveProfileAvatarImageUrl(
+                            profile,
+                            avatarImageUrlsById,
+                            householdAvatarUrisById
+                        ),
                         focusRequester = focusRequesters[index],
                         compact = useCompactCards,
                         onFocused = { onProfileFocused(profile) },
@@ -1107,7 +1106,7 @@ private fun ProfileCard(
                 contentAlignment = Alignment.Center
             ) {
                 ProfileAvatarCircle(
-                    name = profile.name,
+                    name = profile.displayName,
                     colorHex = profile.avatarColorHex,
                     size = avatarSize,
                     avatarImageUrl = avatarImageUrl
@@ -1148,7 +1147,7 @@ private fun ProfileCard(
         )
 
         Text(
-            text = profile.name,
+            text = profile.displayName,
             color = nameColor,
             fontSize = if (compact) 15.sp else 17.sp,
             fontWeight = nameWeight,
@@ -1320,9 +1319,7 @@ private fun CreateProfileOverlay(
     onCreateProfile: (
         name: String,
         colorHex: String,
-        avatarId: String?,
-        copyFromProfileId: Int?,
-        copyProviderCredentials: Boolean
+        avatarId: String?
     ) -> Unit
 ) {
     BackHandler(onBack = onDismiss)
@@ -1331,9 +1328,6 @@ private fun CreateProfileOverlay(
     var selectedColorHex by remember { mutableStateOf("#1E88E5") }
     var selectedAvatarId by remember { mutableStateOf<String?>(null) }
     var focusedAvatarName by remember { mutableStateOf<String?>(null) }
-    var selectedCopySourceId by remember { mutableStateOf<Int?>(null) }
-    var copyProviderCredentials by remember { mutableStateOf(false) }
-    var showSettingsSourceDialog by remember { mutableStateOf(false) }
     val selectedAvatar = remember(avatarCatalog, selectedAvatarId) {
         avatarCatalog.find { it.id == selectedAvatarId }
     }
@@ -1411,9 +1405,7 @@ private fun CreateProfileOverlay(
                             onCreateProfile(
                                 profileName,
                                 selectedColorHex,
-                                selectedAvatarId,
-                                selectedCopySourceId,
-                                copyProviderCredentials
+                                selectedAvatarId
                             )
                         }
                     )
@@ -1461,22 +1453,6 @@ private fun CreateProfileOverlay(
                         value = profileName,
                         onValueChange = { if (it.length <= 20) profileName = it },
                         focusRequester = nameFocusRequester
-                    )
-
-                    val selectedCopySource = profiles.firstOrNull { it.id == selectedCopySourceId }
-                    OverlayButton(
-                        text = if (selectedCopySource == null) {
-                            stringResource(R.string.profile_copy_settings_create_fresh)
-                        } else {
-                            stringResource(
-                                R.string.profile_copy_settings_create_source,
-                                selectedCopySource.name
-                            )
-                        },
-                        isPrimary = false,
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isCreating,
-                        onClick = { showSettingsSourceDialog = true }
                     )
 
                 }
@@ -1556,20 +1532,6 @@ private fun CreateProfileOverlay(
 
             Spacer(modifier = Modifier.height(NuvioTheme.spacing.xl))
         }
-    }
-
-    if (showSettingsSourceDialog) {
-        ProfileSettingsSourceDialog(
-            profiles = profiles,
-            selectedSourceProfileId = selectedCopySourceId,
-            copyProviderCredentials = copyProviderCredentials,
-            onDismiss = { showSettingsSourceDialog = false },
-            onConfirm = { sourceProfileId, shouldCopyProviderCredentials ->
-                selectedCopySourceId = sourceProfileId
-                copyProviderCredentials = shouldCopyProviderCredentials
-                showSettingsSourceDialog = false
-            }
-        )
     }
 }
 

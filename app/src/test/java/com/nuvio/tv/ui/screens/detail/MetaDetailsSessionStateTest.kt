@@ -12,7 +12,7 @@ class MetaDetailsSessionStateTest {
         val nextToWatch = nextToWatch("Resume S1E2")
 
         state.putNextToWatch(
-            profileId = 2,
+            profileId = "2",
             progressSource = "trakt",
             contentId = " TT123 ",
             contentType = "Series",
@@ -22,7 +22,7 @@ class MetaDetailsSessionStateTest {
         assertEquals(
             nextToWatch,
             state.getNextToWatch(
-                profileId = 2,
+                profileId = "2",
                 progressSource = "TRAKT",
                 contentId = "tt123",
                 contentType = "series"
@@ -35,15 +35,15 @@ class MetaDetailsSessionStateTest {
         val state = MetaDetailsSessionState()
 
         state.putNextToWatch(
-            profileId = 1,
+            profileId = "1",
             progressSource = "TRAKT",
             contentId = "tt123",
             contentType = "series",
             nextToWatch = nextToWatch("Play S1E1")
         )
 
-        assertNull(state.getNextToWatch(2, "TRAKT", "tt123", "series"))
-        assertNull(state.getNextToWatch(1, "SIMKL", "tt123", "series"))
+        assertNull(state.getNextToWatch("2", "TRAKT", "tt123", "series"))
+        assertNull(state.getNextToWatch("1", "SIMKL", "tt123", "series"))
     }
 
     private fun nextToWatch(label: String) = NextToWatch(

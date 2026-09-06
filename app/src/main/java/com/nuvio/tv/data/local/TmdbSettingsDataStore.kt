@@ -29,7 +29,7 @@ class TmdbSettingsDataStore @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private fun store(profileId: Int = profileManager.activeProfileId.value) =
+    private fun store(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, FEATURE)
 
     private val enabledKey = booleanPreferencesKey("tmdb_enabled")

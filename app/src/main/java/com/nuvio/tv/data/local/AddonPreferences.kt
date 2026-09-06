@@ -27,20 +27,30 @@ class AddonPreferences @Inject constructor(
         private const val FEATURE = "addon_preferences"
     }
 
-    private fun effectiveProfileId(): Int {
+    // Was "return 1 (the primary slot)" — a real household has no numbered
+    // primary, so "use the primary's addons" now means the Manager's.
+    private fun effectiveProfileId(): String {
         val active = profileManager.activeProfile
-        return if (active != null && active.usesPrimaryAddons) 1 else profileManager.activeProfileId.value
+        if (active != null && active.usesPrimaryAddons) {
+            val managerId = profileManager.profiles.value.firstOrNull { it.isManager }?.id
+            if (managerId != null) return managerId
+        }
+        return profileManager.activeProfileId.value
     }
 
-    private fun store(profileId: Int = effectiveProfileId()) =
+    private fun store(profileId: String = effectiveProfileId()) =
         factory.get(profileId, FEATURE)
 
-    private val effectiveProfileIdFlow: Flow<Int> = combine(
+    private val effectiveProfileIdFlow: Flow<String> = combine(
         profileManager.activeProfileId,
         profileManager.profiles
     ) { activeProfileId, profiles ->
         val activeProfile = profiles.firstOrNull { it.id == activeProfileId }
-        if (activeProfile?.usesPrimaryAddons == true) 1 else activeProfileId
+        if (activeProfile?.usesPrimaryAddons == true) {
+            profiles.firstOrNull { it.isManager }?.id ?: activeProfileId
+        } else {
+            activeProfileId
+        }
     }.distinctUntilChanged()
 
     private val gson = Gson()

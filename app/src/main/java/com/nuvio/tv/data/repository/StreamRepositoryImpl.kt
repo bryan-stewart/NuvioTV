@@ -74,7 +74,7 @@ class StreamRepositoryImpl @Inject constructor(
     )
 
     private data class StreamSourceConfigurationSnapshot(
-        val profileId: Int,
+        val profileId: String,
         val addons: List<Addon>,
         val pluginsEnabled: Boolean,
         val enabledScrapers: List<ScraperInfo>,

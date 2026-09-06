@@ -48,7 +48,7 @@ class CollectionsDataStore @Inject constructor(
         private const val FEATURE = "collections"
     }
 
-    private fun store(profileId: Int = profileManager.activeProfileId.value) =
+    private fun store(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, FEATURE)
 
     private val gson = Gson()

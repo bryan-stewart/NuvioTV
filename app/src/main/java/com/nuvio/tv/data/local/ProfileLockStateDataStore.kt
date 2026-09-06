@@ -24,17 +24,17 @@ class ProfileLockStateDataStore @Inject constructor(
     private val dataStore = context.profileLockStateDataStore
     private val pinEnabledMapKey = stringPreferencesKey("pin_enabled_map")
 
-    val pinEnabled: Flow<Map<Int, Boolean>> = dataStore.data.map { prefs ->
+    val pinEnabled: Flow<Map<String, Boolean>> = dataStore.data.map { prefs ->
         decode(prefs[pinEnabledMapKey])
     }
 
-    suspend fun replaceAll(states: Map<Int, Boolean>) {
+    suspend fun replaceAll(states: Map<String, Boolean>) {
         dataStore.edit { prefs ->
             prefs[pinEnabledMapKey] = encode(states)
         }
     }
 
-    suspend fun setPinEnabled(profileId: Int, enabled: Boolean) {
+    suspend fun setPinEnabled(profileId: String, enabled: Boolean) {
         dataStore.edit { prefs ->
             val current = decode(prefs[pinEnabledMapKey]).toMutableMap()
             current[profileId] = enabled
@@ -48,15 +48,15 @@ class ProfileLockStateDataStore @Inject constructor(
         }
     }
 
-    private fun encode(map: Map<Int, Boolean>): String =
+    private fun encode(map: Map<String, Boolean>): String =
         map.entries.joinToString(separator = ",") { "${it.key}:${it.value}" }
 
-    private fun decode(raw: String?): Map<Int, Boolean> {
+    private fun decode(raw: String?): Map<String, Boolean> {
         if (raw.isNullOrBlank()) return emptyMap()
         return raw.split(",").mapNotNull { entry ->
             val parts = entry.split(":")
             if (parts.size != 2) return@mapNotNull null
-            val id = parts[0].toIntOrNull() ?: return@mapNotNull null
+            val id = parts[0].takeIf { it.isNotBlank() } ?: return@mapNotNull null
             val enabled = parts[1].toBooleanStrictOrNull() ?: return@mapNotNull null
             id to enabled
         }.toMap()

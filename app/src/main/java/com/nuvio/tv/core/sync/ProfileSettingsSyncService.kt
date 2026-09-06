@@ -19,7 +19,6 @@ import com.nuvio.tv.data.local.ExperienceModeDataStore
 import com.nuvio.tv.data.local.ProfileDataStoreFactory
 import com.nuvio.tv.data.local.StreamBadgeSettingsDataStore
 import com.nuvio.tv.data.local.TmdbSettingsDataStore
-import com.nuvio.tv.data.remote.supabase.SupabaseProfileSetupCopyResult
 import com.nuvio.tv.data.remote.supabase.SupabaseProfileSettingsBlob
 import com.nuvio.tv.domain.model.DiscoverLocation
 import com.nuvio.tv.domain.repository.MetaRepository
@@ -255,100 +254,6 @@ class ProfileSettingsSyncService @Inject constructor(
         }
     }
 
-    suspend fun copyProfileSetup(
-        sourceProfileId: Int,
-        targetProfileId: Int,
-        copyProviderCredentials: Boolean = false
-    ): Result<Unit> =
-        withContext(Dispatchers.IO) {
-            syncMutex.withLock {
-                try {
-                    require(sourceProfileId != targetProfileId)
-                    require(profileManager.profiles.value.any { it.id == sourceProfileId })
-                    require(profileManager.profiles.value.any { it.id == targetProfileId })
-
-                    val targetFeatures = if (authManager.isAuthenticated) {
-                        if (
-                            copyProviderCredentials &&
-                            profileManager.activeProfileId.value in setOf(sourceProfileId, targetProfileId)
-                        ) {
-                            providerCredentialSyncService.syncFromRemote().getOrThrow()
-                        }
-                        val sourceBlob = if (sourceProfileId == profileManager.activeProfileId.value) {
-                            exportSettingsBlob(sourceProfileId).also { blob ->
-                                pushProfileToRemote(sourceProfileId, blob)
-                            }
-                        } else {
-                            pullProfileFromRemote(sourceProfileId)
-                                ?: exportSettingsBlob(sourceProfileId).also { blob ->
-                                    pushProfileToRemote(sourceProfileId, blob)
-                                }
-                        }
-                        require(sourceBlob["features"] is JsonObject)
-
-                        val params = buildJsonObject {
-                            put("p_source_profile_id", sourceProfileId)
-                            put("p_target_profile_id", targetProfileId)
-                            put("p_copy_tv", true)
-                            put("p_copy_mobile", false)
-                            put("p_copy_desktop", false)
-                            put("p_copy_provider_credentials", copyProviderCredentials)
-                            put("p_replace_provider_credentials", false)
-                            putSyncOriginClientId(syncClientIdentity)
-                        }
-                        val response = withJwtRefreshRetry {
-                            postgrest.rpc("sync_copy_profile_setup", params)
-                        }
-                        val copyResult = response.decodeList<SupabaseProfileSetupCopyResult>().firstOrNull()
-                            ?: error("Profile settings copy returned no result")
-                        check(copyResult.sourceProfileId == sourceProfileId)
-                        check(copyResult.targetProfileId == targetProfileId)
-                        check(copyResult.tvStatus == "copied" || copyResult.tvStatus == "unchanged")
-                        if (copyProviderCredentials) {
-                            check(
-                                copyResult.providerCredentialsStatus in setOf(
-                                    "copied",
-                                    "copied_partial",
-                                    "kept_existing",
-                                    "unchanged",
-                                    "source_missing"
-                                )
-                            )
-                        }
-                        pullProfileFromRemote(targetProfileId)
-                            ?.get("features")
-                            ?.jsonObject
-                            ?: error("Copied TV settings are unavailable")
-                    } else {
-                        exportSettingsBlob(sourceProfileId)["features"]?.jsonObject
-                            ?: error("Source TV settings are unavailable")
-                    }
-
-                    applySettingsBlob(
-                        profileId = targetProfileId,
-                        featuresJson = targetFeatures,
-                        signature = buildSettingsSignature(targetFeatures)
-                    )
-                    if (copyProviderCredentials) {
-                        if (authManager.isAuthenticated) {
-                            if (profileManager.activeProfileId.value == targetProfileId) {
-                                providerCredentialSyncService.syncFromRemote(targetProfileId).getOrThrow()
-                            }
-                        } else {
-                            copyProviderCredentialsLocally(sourceProfileId, targetProfileId)
-                        }
-                    }
-                    Log.d(TAG, "Copied profile setup from $sourceProfileId to $targetProfileId")
-                    Result.success(Unit)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to copy profile setup from $sourceProfileId to $targetProfileId", e)
-                    Result.failure(e)
-                }
-            }
-        }
-
     fun requestForegroundPull(force: Boolean = false) {
         providerCredentialSyncService.requestForegroundPull(force)
         if (!authManager.isAuthenticated) return
@@ -369,7 +274,7 @@ class ProfileSettingsSyncService @Inject constructor(
     }
 
     private suspend fun pushProfileToRemote(
-        profileId: Int,
+        profileId: String,
         settingsJson: JsonObject? = null
     ) {
         val resolvedSettingsJson = settingsJson ?: exportSettingsBlob(profileId)
@@ -384,7 +289,7 @@ class ProfileSettingsSyncService @Inject constructor(
         }
     }
 
-    private suspend fun pullProfileFromRemote(profileId: Int): JsonObject? {
+    private suspend fun pullProfileFromRemote(profileId: String): JsonObject? {
         val params = buildJsonObject {
             put("p_profile_id", profileId)
             put("p_platform", SETTINGS_SYNC_PLATFORM)
@@ -396,7 +301,7 @@ class ProfileSettingsSyncService @Inject constructor(
     }
 
     private suspend fun applySettingsBlob(
-        profileId: Int,
+        profileId: String,
         featuresJson: JsonObject,
         signature: String
     ) {
@@ -417,23 +322,7 @@ class ProfileSettingsSyncService @Inject constructor(
         }
     }
 
-    private suspend fun copyProviderCredentialsLocally(sourceProfileId: Int, targetProfileId: Int) {
-        credentialProfileSettingsKeys.forEach { (feature, keyNames) ->
-            val sourcePreferences = profileDataStoreFactory.get(sourceProfileId, feature).data.first()
-            profileDataStoreFactory.get(targetProfileId, feature).edit { targetPreferences ->
-                keyNames.forEach { keyName ->
-                    val key = stringPreferencesKey(keyName)
-                    val sourceValue = sourcePreferences[key]?.trim().orEmpty()
-                    val targetValue = targetPreferences[key]?.trim().orEmpty()
-                    if (sourceValue.isNotEmpty() && targetValue.isEmpty()) {
-                        targetPreferences[key] = sourceValue
-                    }
-                }
-            }
-        }
-    }
-
-    private suspend fun exportSettingsBlob(profileId: Int): JsonObject {
+    private suspend fun exportSettingsBlob(profileId: String): JsonObject {
         val features = buildJsonObject {
             syncedFeatures.forEach { feature ->
                 val prefs = profileDataStoreFactory.get(profileId, feature).data.first()
@@ -454,7 +343,7 @@ class ProfileSettingsSyncService @Inject constructor(
         }
     }
 
-    private suspend fun importSettingsBlob(profileId: Int, featuresJson: JsonObject) {
+    private suspend fun importSettingsBlob(profileId: String, featuresJson: JsonObject) {
         applyingRemoteBlob = true
         try {
             syncedFeatures.forEach { feature ->
@@ -561,7 +450,7 @@ class ProfileSettingsSyncService @Inject constructor(
         }
     }
 
-    private suspend fun buildSettingsSignature(profileId: Int): String {
+    private suspend fun buildSettingsSignature(profileId: String): String {
         val signatures = ArrayList<String>(syncedFeatures.size)
         syncedFeatures.forEach { feature ->
             val prefs = profileDataStoreFactory.get(profileId, feature).data.first()

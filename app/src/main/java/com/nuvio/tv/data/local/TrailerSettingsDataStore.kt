@@ -19,7 +19,7 @@ class TrailerSettingsDataStore @Inject constructor(
         private const val FEATURE = "trailer_settings"
     }
 
-    private fun store(profileId: Int = profileManager.activeProfileId.value) =
+    private fun store(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, FEATURE)
 
     private val enabledKey = booleanPreferencesKey("trailer_enabled")

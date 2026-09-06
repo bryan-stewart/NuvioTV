@@ -147,7 +147,7 @@ class StreamRepositoryPluginIsolationTest {
         every { pluginManager.repositories } returns flowOf(emptyList())
 
         val profileManager = mockk<ProfileManager>(relaxed = true)
-        every { profileManager.activeProfileId } returns MutableStateFlow(1)
+        every { profileManager.activeProfileId } returns MutableStateFlow("1")
 
         val tmdbService = mockk<TmdbService>(relaxed = true)
         val debridSettingsDataStore = mockk<DebridSettingsDataStore>()

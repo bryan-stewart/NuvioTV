@@ -52,7 +52,7 @@ internal suspend fun HomeViewModel.applyConclusiveOlderNextUpResults(
     conclusivelyProcessedContentIds: Set<String>,
     dismissedNextUpKeys: Set<String>,
     sortMode: ContinueWatchingSortMode,
-    pipelineProfileId: Int,
+    pipelineProfileId: String,
     persistSnapshot: Boolean
 ) {
     if (resolvedItems.isEmpty() && conclusivelyProcessedContentIds.isEmpty()) return

@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,18 +49,18 @@ class WatchProgressPreferences @Inject constructor(
     )
 
     private data class ProgressMapCache(
-        val profileId: Int,
+        val profileId: String,
         val json: String,
         val entries: Map<String, WatchProgress>
     )
 
-    private fun metadataStore(profileId: Int = profileManager.activeProfileId.value) =
+    private fun metadataStore(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, WATCH_PROGRESS_METADATA_FEATURE)
 
-    private fun recentStore(profileId: Int = profileManager.activeProfileId.value) =
+    private fun recentStore(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, WATCH_PROGRESS_RECENT_FEATURE)
 
-    private fun archiveStore(profileId: Int = profileManager.activeProfileId.value) =
+    private fun archiveStore(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, WATCH_PROGRESS_ARCHIVE_FEATURE)
 
     private val gson = Gson()
@@ -67,32 +68,24 @@ class WatchProgressPreferences @Inject constructor(
     private val deltaCursorKey = longPreferencesKey("watch_progress_delta_cursor")
     private val deltaInitializedKey = booleanPreferencesKey("watch_progress_delta_initialized")
     private val storageMutex = Mutex()
-    private val initializedProfiles = mutableSetOf<Int>()
+    private val initializedProfiles = mutableSetOf<String>()
     private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
 
     @Volatile private var recentMapCache: ProgressMapCache? = null
     @Volatile private var archiveMapCache: ProgressMapCache? = null
 
-    /** Hot snapshot flow — reads DataStore once, then stays in memory. Updates automatically. */
-    private val hotProgressSnapshots: kotlinx.coroutines.flow.StateFlow<ProgressSnapshot?> =
-        profileManager.activeProfileId.flatMapLatest { pid ->
-            progressSnapshotsCold(pid)
-        }.stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, null)
+    private val hotProgressSnapshots =
+        ConcurrentHashMap<String, kotlinx.coroutines.flow.StateFlow<ProgressSnapshot?>>()
 
-    /**
-     * Returns hot in-memory snapshot for active profile (instant read after first load).
-     */
-    private fun progressSnapshots(profileId: Int): Flow<ProgressSnapshot> {
-        // For active profile, use hot flow (in-memory, no disk I/O after first read).
-        return if (profileId == profileManager.activeProfileId.value) {
-            hotProgressSnapshots.mapNotNull { it }
-        } else {
+    private fun progressSnapshots(profileId: String): Flow<ProgressSnapshot> {
+        return hotProgressSnapshots.computeIfAbsent(profileId) {
             progressSnapshotsCold(profileId)
-        }
+                .stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, null)
+        }.mapNotNull { it }
     }
 
     /** Persisted timestamp of the last successful push to remote. */
-    suspend fun getLastSuccessfulPushMs(profileId: Int = profileManager.activeProfileId.value): Long {
+    suspend fun getLastSuccessfulPushMs(profileId: String = profileManager.activeProfileId.value): Long {
         val prefs = metadataStore(profileId).data.first()
         return prefs[lastSuccessfulPushMsKey] ?: 0L
     }
@@ -102,24 +95,24 @@ class WatchProgressPreferences @Inject constructor(
      * the edit, so two pushes finishing out of order cannot leave the older one on disk.
      * Nothing needs to lower it: deleting a profile removes the whole store.
      */
-    suspend fun advanceLastSuccessfulPushMs(timestampMs: Long, profileId: Int = profileManager.activeProfileId.value) {
+    suspend fun advanceLastSuccessfulPushMs(timestampMs: Long, profileId: String = profileManager.activeProfileId.value) {
         metadataStore(profileId).edit { prefs ->
             val stored = prefs[lastSuccessfulPushMsKey] ?: 0L
             prefs[lastSuccessfulPushMsKey] = maxOf(stored, timestampMs)
         }
     }
 
-    suspend fun getDeltaCursor(profileId: Int = profileManager.activeProfileId.value): Long {
+    suspend fun getDeltaCursor(profileId: String = profileManager.activeProfileId.value): Long {
         val prefs = metadataStore(profileId).data.first()
         return prefs[deltaCursorKey] ?: 0L
     }
 
-    suspend fun isDeltaInitialized(profileId: Int = profileManager.activeProfileId.value): Boolean {
+    suspend fun isDeltaInitialized(profileId: String = profileManager.activeProfileId.value): Boolean {
         val prefs = metadataStore(profileId).data.first()
         return prefs[deltaInitializedKey] ?: false
     }
 
-    suspend fun setDeltaState(cursor: Long, initialized: Boolean = true, profileId: Int = profileManager.activeProfileId.value) {
+    suspend fun setDeltaState(cursor: Long, initialized: Boolean = true, profileId: String = profileManager.activeProfileId.value) {
         metadataStore(profileId).edit { prefs ->
             prefs[deltaCursorKey] = cursor.coerceAtLeast(0L)
             prefs[deltaInitializedKey] = initialized
@@ -138,10 +131,14 @@ class WatchProgressPreferences @Inject constructor(
     @Volatile private var cachedProgressJson: String? = null
     @Volatile private var cachedProgressArchiveJson: String? = null
     @Volatile private var cachedProgressResult: List<WatchProgress>? = null
-    @Volatile private var cachedProfileId: Int = -1
+    @Volatile private var cachedProfileId: String = ""
 
     val allProgress: Flow<List<WatchProgress>> = profileManager.activeProfileId.flatMapLatest { pid ->
-        progressSnapshots(pid).map { snapshot ->
+        observeAllProgress(pid)
+    }
+
+    fun observeAllProgress(profileId: String): Flow<List<WatchProgress>> {
+        return progressSnapshots(profileId).map { snapshot ->
             val recentJson = snapshot.recentJson
             val archiveJson = snapshot.archiveJson
 
@@ -151,7 +148,7 @@ class WatchProgressPreferences @Inject constructor(
                 recentJson == cachedProgressJson &&
                 archiveJson == cachedProgressArchiveJson &&
                 cached != null &&
-                cachedProfileId == pid
+                cachedProfileId == profileId
             ) {
                 return@map cached
             }
@@ -175,7 +172,7 @@ class WatchProgressPreferences @Inject constructor(
             val result = latestByContent.sortedByDescending { it.lastWatched }
 
             // Cache for next emission
-            cachedProfileId = pid
+            cachedProfileId = profileId
             cachedProgressJson = recentJson
             cachedProgressArchiveJson = archiveJson
             cachedProgressResult = result
@@ -186,10 +183,14 @@ class WatchProgressPreferences @Inject constructor(
     @Volatile private var cachedRawProgressJson: String? = null
     @Volatile private var cachedRawProgressArchiveJson: String? = null
     @Volatile private var cachedRawProgressResult: List<WatchProgress>? = null
-    @Volatile private var cachedRawProfileId: Int = -1
+    @Volatile private var cachedRawProfileId: String = ""
 
     val allRawProgress: Flow<List<WatchProgress>> = profileManager.activeProfileId.flatMapLatest { pid ->
-        progressSnapshots(pid).map { snapshot ->
+        observeAllRawProgress(pid)
+    }
+
+    fun observeAllRawProgress(profileId: String): Flow<List<WatchProgress>> {
+        return progressSnapshots(profileId).map { snapshot ->
             val recentJson = snapshot.recentJson
             val archiveJson = snapshot.archiveJson
 
@@ -198,7 +199,7 @@ class WatchProgressPreferences @Inject constructor(
                 recentJson == cachedRawProgressJson &&
                 archiveJson == cachedRawProgressArchiveJson &&
                 cached != null &&
-                cachedRawProfileId == pid
+                cachedRawProfileId == profileId
             ) {
                 return@map cached
             }
@@ -207,7 +208,7 @@ class WatchProgressPreferences @Inject constructor(
                 .values
                 .sortedByDescending { it.lastWatched }
 
-            cachedRawProfileId = pid
+            cachedRawProfileId = profileId
             cachedRawProgressJson = recentJson
             cachedRawProgressArchiveJson = archiveJson
             cachedRawProgressResult = result
@@ -225,7 +226,7 @@ class WatchProgressPreferences @Inject constructor(
     /**
      * Get watch progress for a specific content item
      */
-    fun getProgress(contentId: String, profileId: Int = profileManager.activeProfileId.value): Flow<WatchProgress?> {
+    fun getProgress(contentId: String, profileId: String = profileManager.activeProfileId.value): Flow<WatchProgress?> {
         return progressSnapshots(profileId).map { snapshot ->
             val map = mergeWatchProgressBuckets(snapshot.recent, snapshot.archive)
             // Try direct key first (movies), then find latest episode entry (series).
@@ -238,7 +239,7 @@ class WatchProgressPreferences @Inject constructor(
     /**
      * Get watch progress for a specific episode
      */
-    fun getEpisodeProgress(contentId: String, season: Int, episode: Int, profileId: Int = profileManager.activeProfileId.value): Flow<WatchProgress?> {
+    fun getEpisodeProgress(contentId: String, season: Int, episode: Int, profileId: String = profileManager.activeProfileId.value): Flow<WatchProgress?> {
         return progressSnapshots(profileId).map { snapshot ->
             val key = "${contentId}_s${season}e${episode}"
             snapshot.recent[key] ?: snapshot.archive[key]
@@ -248,7 +249,7 @@ class WatchProgressPreferences @Inject constructor(
     /**
      * Get all episode progress for a series
      */
-    fun getAllEpisodeProgress(contentId: String, profileId: Int = profileManager.activeProfileId.value): Flow<Map<Pair<Int, Int>, WatchProgress>> {
+    fun getAllEpisodeProgress(contentId: String, profileId: String = profileManager.activeProfileId.value): Flow<Map<Pair<Int, Int>, WatchProgress>> {
         return progressSnapshots(profileId).map { snapshot ->
             val map = mergeWatchProgressBuckets(snapshot.recent, snapshot.archive)
             map.values
@@ -262,7 +263,7 @@ class WatchProgressPreferences @Inject constructor(
      */
     suspend fun saveProgress(
         progress: WatchProgress,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ) {
         storageMutex.withLock {
             ensureStorageLocked(profileId)
@@ -289,7 +290,7 @@ class WatchProgressPreferences @Inject constructor(
 
     suspend fun saveProgressBatch(
         progressList: List<WatchProgress>,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ) {
         if (progressList.isEmpty()) return
         storageMutex.withLock {
@@ -308,7 +309,7 @@ class WatchProgressPreferences @Inject constructor(
         contentId: String,
         season: Int? = null,
         episode: Int? = null,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ) {
         storageMutex.withLock {
             ensureStorageLocked(profileId)
@@ -354,7 +355,7 @@ class WatchProgressPreferences @Inject constructor(
     suspend fun removeProgressBatch(
         contentId: String,
         episodes: List<Pair<Int, Int>>,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ) {
         if (episodes.isEmpty()) return
         storageMutex.withLock {
@@ -379,7 +380,7 @@ class WatchProgressPreferences @Inject constructor(
      */
     suspend fun markAsCompleted(
         progress: WatchProgress,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ) {
         // If the incoming duration is a dummy sentinel (≤ 1ms), check for an
         // existing local entry with a real duration from prior playback.
@@ -405,7 +406,7 @@ class WatchProgressPreferences @Inject constructor(
      */
     suspend fun markAsCompletedBatch(
         progressList: List<WatchProgress>,
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ) {
         if (progressList.isEmpty()) return
         val rawEntries = getAllRawEntries(profileId)
@@ -432,7 +433,7 @@ class WatchProgressPreferences @Inject constructor(
      * @param profileId Explicit profile to read from. Prevents race conditions
      *   when the active profile changes between scheduling and execution of a sync.
      */
-    suspend fun getAllRawEntries(profileId: Int = profileManager.activeProfileId.value): Map<String, WatchProgress> {
+    suspend fun getAllRawEntries(profileId: String = profileManager.activeProfileId.value): Map<String, WatchProgress> {
         return storageMutex.withLock {
             ensureStorageLocked(profileId)
             val buckets = readBucketsLocked(profileId)
@@ -448,36 +449,32 @@ class WatchProgressPreferences @Inject constructor(
      */
     suspend fun mergeRemoteEntries(
         remoteEntries: Map<String, WatchProgress>,
-        lastSuccessfulPushMs: Long = 0L,
-        profileId: Int = profileManager.activeProfileId.value,
+        pendingUpsertKeys: Set<String> = emptySet(),
+        pendingDeleteKeys: Set<String> = emptySet(),
+        lastSuccessfulPushMs: Long? = null,
+        profileId: String = profileManager.activeProfileId.value,
         removeMissingRemoteEntries: Boolean = true,
         isNonTraktId: ((String) -> Boolean)? = null
     ): Boolean {
         var preservedLocalItems = false
-        Log.d("WatchProgressPrefs", "mergeRemoteEntries: ${remoteEntries.size} remote entries, lastPushMs=$lastSuccessfulPushMs, profile=$profileId, removeMissing=$removeMissingRemoteEntries")
+        Log.d("WatchProgressPrefs", "mergeRemoteEntries: ${remoteEntries.size} remote entries, profile=$profileId, removeMissing=$removeMissingRemoteEntries")
         storageMutex.withLock {
             ensureStorageLocked(profileId)
             val current = readBucketsLocked(profileId)
             val local = mergeWatchProgressBuckets(current.recent, current.archive)
             Log.d("WatchProgressPrefs", "mergeRemoteEntries: ${local.size} existing local entries")
 
-            // Remove local entries that no longer exist on remote - but protect
-            // entries created after the last successful push (they haven't reached
-            // remote yet, so their absence doesn't mean deletion on another device).
-            // When isNonTraktId is provided, also protect entries with non-Trakt-
-            // compatible IDs — these can never appear in a Trakt remote response,
-            // so their absence does NOT indicate deletion on another device.
-            // (Nuvio Sync does support these IDs, so callers using Nuvio Sync
-            // should NOT pass isNonTraktId.)
-            if (removeMissingRemoteEntries && remoteEntries.isNotEmpty()) {
+            if (removeMissingRemoteEntries) {
                 val removedKeys = local.keys - remoteEntries.keys
                 removedKeys.forEach { key ->
                     val localEntry = local[key]
                     if (localEntry != null && isNonTraktId != null && isNonTraktId(localEntry.contentId)) {
                         Log.d("WatchProgressPrefs", "  preserved key=$key (non-Trakt ID: ${localEntry.contentId})")
                         preservedLocalItems = true
-                    } else if (localEntry != null && localEntry.lastWatched > lastSuccessfulPushMs) {
-                        Log.d("WatchProgressPrefs", "  preserved key=$key (lastWatched=${localEntry.lastWatched} > lastPush=$lastSuccessfulPushMs)")
+                    } else if (key in pendingUpsertKeys) {
+                        Log.d("WatchProgressPrefs", "  preserved pending key=$key")
+                        preservedLocalItems = true
+                    } else if (localEntry != null && lastSuccessfulPushMs != null && localEntry.lastWatched > lastSuccessfulPushMs) {
                         preservedLocalItems = true
                     } else {
                         local.remove(key)
@@ -488,14 +485,20 @@ class WatchProgressPreferences @Inject constructor(
 
             for ((key, remote) in remoteEntries) {
                 val existing = local[key]
-                if (existing == null || remote.lastWatched > existing.lastWatched) {
-                    local[key] = mergeDisplayMetadata(remote, existing)
-                    Log.d("WatchProgressPrefs", "  merged key=$key (existing=${existing != null})")
-                } else if (existing.lastWatched > remote.lastWatched && existing.lastWatched > lastSuccessfulPushMs) {
-                    Log.d("WatchProgressPrefs", "  skipped key=$key (local is newer)")
-                    preservedLocalItems = true
-                } else {
-                    Log.d("WatchProgressPrefs", "  skipped key=$key (already synced)")
+                when {
+                    key in pendingDeleteKeys -> local.remove(key)
+                    key in pendingUpsertKeys && existing != null -> preservedLocalItems = true
+                    existing != null &&
+                        lastSuccessfulPushMs != null &&
+                        remote.lastWatched <= existing.lastWatched -> {
+                        if (existing.lastWatched > remote.lastWatched && existing.lastWatched > lastSuccessfulPushMs) {
+                            preservedLocalItems = true
+                        }
+                    }
+                    else -> {
+                        local[key] = mergeDisplayMetadata(remote, existing)
+                        Log.d("WatchProgressPrefs", "  merged key=$key (existing=${existing != null})")
+                    }
                 }
             }
 
@@ -509,8 +512,10 @@ class WatchProgressPreferences @Inject constructor(
     suspend fun applyRemoteChanges(
         upserts: Map<String, WatchProgress>,
         deletes: Collection<String>,
-        lastSuccessfulPushMs: Long = 0L,
-        profileId: Int = profileManager.activeProfileId.value
+        pendingUpsertKeys: Set<String> = emptySet(),
+        pendingDeleteKeys: Set<String> = emptySet(),
+        lastSuccessfulPushMs: Long? = null,
+        profileId: String = profileManager.activeProfileId.value
     ): Boolean {
         if (upserts.isEmpty() && deletes.isEmpty()) {
             Log.d(TAG, "applyRemoteChanges: no changes for profile $profileId")
@@ -526,15 +531,26 @@ class WatchProgressPreferences @Inject constructor(
             beforeCount = local.size
 
             deletes.forEach { key ->
-                local.remove(key)
+                if (key in pendingUpsertKeys) {
+                    preservedLocalItems = true
+                } else {
+                    local.remove(key)
+                }
             }
 
             upserts.forEach { (key, remote) ->
                 val existing = local[key]
-                if (existing == null || remote.lastWatched > existing.lastWatched) {
-                    local[key] = mergeDisplayMetadata(remote, existing)
-                } else if (existing.lastWatched > remote.lastWatched && existing.lastWatched > lastSuccessfulPushMs) {
-                    preservedLocalItems = true
+                when {
+                    key in pendingDeleteKeys -> local.remove(key)
+                    key in pendingUpsertKeys && existing != null -> preservedLocalItems = true
+                    existing != null &&
+                        lastSuccessfulPushMs != null &&
+                        remote.lastWatched <= existing.lastWatched -> {
+                        if (existing.lastWatched > remote.lastWatched && existing.lastWatched > lastSuccessfulPushMs) {
+                            preservedLocalItems = true
+                        }
+                    }
+                    else -> local[key] = mergeDisplayMetadata(remote, existing)
                 }
             }
 
@@ -548,29 +564,21 @@ class WatchProgressPreferences @Inject constructor(
 
     suspend fun replaceWithRemoteEntries(
         remoteEntries: Map<String, WatchProgress>,
-        profileId: Int = profileManager.activeProfileId.value
-    ) {
-        Log.d("WatchProgressPrefs", "replaceWithRemoteEntries: ${remoteEntries.size} remote entries, profile=$profileId")
-        storageMutex.withLock {
-            ensureStorageLocked(profileId)
-            val currentBuckets = readBucketsLocked(profileId)
-            val current = mergeWatchProgressBuckets(currentBuckets.recent, currentBuckets.archive)
-            if (remoteEntries.isEmpty() && current.isNotEmpty()) {
-                Log.w(TAG, "replaceWithRemoteEntries: remote empty while local has ${current.size} entries; preserving local watch progress")
-                return@withLock
-            }
-            val merged = remoteEntries.mapValues { (key, remote) ->
-                mergeDisplayMetadata(remote, current[key])
-            }.toMutableMap()
-            Log.d("WatchProgressPrefs", "replaceWithRemoteEntries: ${merged.size} entries after merge, writing to DataStore")
-            writeBucketsLocked(profileId, currentBuckets, splitWatchProgressEntries(merged))
-        }
-    }
+        pendingUpsertKeys: Set<String> = emptySet(),
+        pendingDeleteKeys: Set<String> = emptySet(),
+        profileId: String = profileManager.activeProfileId.value
+    ): Boolean = mergeRemoteEntries(
+        remoteEntries = remoteEntries,
+        pendingUpsertKeys = pendingUpsertKeys,
+        pendingDeleteKeys = pendingDeleteKeys,
+        profileId = profileId,
+        removeMissingRemoteEntries = true
+    )
 
     /**
      * Clear all watch progress
      */
-    suspend fun clearAll(profileId: Int = profileManager.activeProfileId.value) {
+    suspend fun clearAll(profileId: String = profileManager.activeProfileId.value) {
         storageMutex.withLock {
             ensureStorageLocked(profileId)
             clearBucketLocked(recentStore(profileId))
@@ -588,7 +596,7 @@ class WatchProgressPreferences @Inject constructor(
      * Clear all watch progress entries EXCEPT those with non-Trakt-compatible IDs
      */
     suspend fun clearAllPreservingNonTraktIds(
-        profileId: Int = profileManager.activeProfileId.value,
+        profileId: String = profileManager.activeProfileId.value,
         isNonTraktId: (String) -> Boolean
     ) {
         storageMutex.withLock {
@@ -609,7 +617,7 @@ class WatchProgressPreferences @Inject constructor(
         }
     }
 
-    private fun progressSnapshotsCold(profileId: Int): Flow<ProgressSnapshot> = flow {
+    private fun progressSnapshotsCold(profileId: String): Flow<ProgressSnapshot> = flow {
         ensureStorage(profileId)
         emitAll(
             combine(
@@ -628,7 +636,7 @@ class WatchProgressPreferences @Inject constructor(
         )
     }
 
-    private suspend fun readSnapshotLocked(profileId: Int): ProgressSnapshot {
+    private suspend fun readSnapshotLocked(profileId: String): ProgressSnapshot {
         val recentJson = recentStore(profileId).data.first()[watchProgressEntriesKey] ?: "{}"
         val archiveJson = archiveStore(profileId).data.first()[watchProgressEntriesKey] ?: "{}"
         return ProgressSnapshot(
@@ -639,13 +647,13 @@ class WatchProgressPreferences @Inject constructor(
         )
     }
 
-    private suspend fun ensureStorage(profileId: Int) {
+    private suspend fun ensureStorage(profileId: String) {
         storageMutex.withLock {
             ensureStorageLocked(profileId)
         }
     }
 
-    private suspend fun ensureStorageLocked(profileId: Int) {
+    private suspend fun ensureStorageLocked(profileId: String) {
         if (profileId in initializedProfiles) return
         val metadata = metadataStore(profileId).data.first()
         if ((metadata[watchProgressStorageVersionKey] ?: 0) < WATCH_PROGRESS_STORAGE_VERSION) {
@@ -667,7 +675,7 @@ class WatchProgressPreferences @Inject constructor(
         initializedProfiles += profileId
     }
 
-    private suspend fun readBucketsLocked(profileId: Int): WatchProgressBuckets {
+    private suspend fun readBucketsLocked(profileId: String): WatchProgressBuckets {
         return WatchProgressBuckets(
             recent = readBucket(recentStore(profileId), profileId, true),
             archive = readBucket(archiveStore(profileId), profileId, false)
@@ -676,7 +684,7 @@ class WatchProgressPreferences @Inject constructor(
 
     private suspend fun readBucket(
         store: DataStore<Preferences>,
-        profileId: Int,
+        profileId: String,
         recent: Boolean
     ): Map<String, WatchProgress> {
         val json = store.data.first()[watchProgressEntriesKey] ?: "{}"
@@ -684,7 +692,7 @@ class WatchProgressPreferences @Inject constructor(
     }
 
     private fun parseBucket(
-        profileId: Int,
+        profileId: String,
         json: String,
         recent: Boolean
     ): Map<String, WatchProgress> {
@@ -703,7 +711,7 @@ class WatchProgressPreferences @Inject constructor(
     }
 
     private suspend fun writeBucketsLocked(
-        profileId: Int,
+        profileId: String,
         current: WatchProgressBuckets,
         updated: WatchProgressBuckets
     ) {

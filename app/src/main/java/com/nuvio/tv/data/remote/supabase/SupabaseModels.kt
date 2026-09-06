@@ -1,12 +1,10 @@
 package com.nuvio.tv.data.remote.supabase
 
 import io.github.jan.supabase.auth.user.UserInfo
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 
@@ -18,7 +16,7 @@ data class SupabasePlugin(
     val name: String? = null,
     val enabled: Boolean = true,
     @SerialName("sort_order") val sortOrder: Int = 0,
-    @SerialName("profile_id") val profileId: Int = 1,
+    @SerialName("profile_id") val profileId: String = "",
     @SerialName("repo_type") val repoType: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null
@@ -32,7 +30,7 @@ data class SupabaseAddon(
     val name: String? = null,
     val enabled: Boolean = true,
     @SerialName("sort_order") val sortOrder: Int = 0,
-    @SerialName("profile_id") val profileId: Int = 1,
+    @SerialName("profile_id") val profileId: String = "",
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null
 )
@@ -106,7 +104,7 @@ data class SupabaseWatchProgress(
     val duration: Long,
     @SerialName("last_watched") val lastWatched: Long,
     @SerialName("progress_key") val progressKey: String,
-    @SerialName("profile_id") val profileId: Int = 1
+    @SerialName("profile_id") val profileId: String = ""
 )
 
 @Serializable
@@ -134,7 +132,7 @@ data class SupabaseWatchedItem(
     val season: Int? = null,
     val episode: Int? = null,
     @SerialName("watched_at") val watchedAt: Long,
-    @SerialName("profile_id") val profileId: Int = 1
+    @SerialName("profile_id") val profileId: String = ""
 )
 
 @Serializable
@@ -153,7 +151,16 @@ data class SupabaseWatchedItemEvent(
 data class SupabaseProfile(
     val id: String? = null,
     @SerialName("user_id") val userId: String? = null,
-    @SerialName("profile_index") val profileIndex: Int,
+    // The real backend profile uuid — this is identity now, everywhere.
+    @SerialName("profile_id") val profileId: String,
+    // Slot-derived display order only (see memberships.slot's own
+    // comment in the backend) — never used as identity for anything.
+    @SerialName("profile_index") val profileIndex: Int = 0,
+    @SerialName("is_manager") val isManager: Boolean = false,
+    // Has its own login (a real auth.users row) vs. a no-login profile the
+    // Manager created and fully controls — see sync_pull_profiles's own
+    // comment on why the client needs this.
+    @SerialName("is_account") val isAccount: Boolean = false,
     val name: String = "",
     @SerialName("avatar_color_hex") val avatarColorHex: String = "#1E88E5",
     @SerialName("uses_primary_addons") val usesPrimaryAddons: Boolean = false,
@@ -162,8 +169,32 @@ data class SupabaseProfile(
     @SerialName("avatar_url") val avatarUrl: String? = null,
     @SerialName("profile_background_id") val profileBackgroundId: String? = null,
     @SerialName("profile_background_url") val profileBackgroundUrl: String? = null,
+    // Read-only: set on the dashboard (by the household's Manager, or the
+    // profile itself), never written from this client. Null means no
+    // override — show this profile's own name instead.
+    val nickname: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null
+)
+
+// pull_my_households's row shape — single-household assumption throughout
+// this schema, same as sync_pull_profiles's own LIMIT 1.
+@Serializable
+data class SupabaseHousehold(
+    @SerialName("household_id") val householdId: String,
+    @SerialName("household_name") val householdName: String = "",
+    @SerialName("is_manager") val isManager: Boolean = false
+)
+
+// create_household_profile returns a raw public.profiles row (many more
+// columns than this) — only what ProfileManager.createProfile actually
+// needs to hand back to its caller; everything else comes down again on
+// the next sync_pull_profiles pull.
+@Serializable
+data class SupabaseCreatedProfile(
+    val id: String,
+    val name: String = "",
+    @SerialName("avatar_color_hex") val avatarColorHex: String = "#1E88E5"
 )
 
 @Serializable
@@ -211,31 +242,21 @@ data class SupabaseMemberAvatarCatalogItem(
 
 @Serializable
 data class SupabaseProfileSettingsBlob(
-    @SerialName("profile_id") val profileId: Int = 1,
+    @SerialName("profile_id") val profileId: String = "",
     @SerialName("settings_json") val settingsJson: JsonObject = buildJsonObject { },
     @SerialName("updated_at") val updatedAt: String? = null
 )
 
-@OptIn(ExperimentalSerializationApi::class)
-@JsonIgnoreUnknownKeys
-@Serializable
-data class SupabaseProfileSetupCopyResult(
-    @SerialName("source_profile_id") val sourceProfileId: Int,
-    @SerialName("target_profile_id") val targetProfileId: Int,
-    @SerialName("tv_status") val tvStatus: String,
-    @SerialName("provider_credentials_status") val providerCredentialsStatus: String
-)
-
 @Serializable
 data class SupabaseCollectionBlob(
-    @SerialName("profile_id") val profileId: Int = 1,
+    @SerialName("profile_id") val profileId: String = "",
     @SerialName("collections_json") val collectionsJson: JsonElement = JsonArray(emptyList()),
     @SerialName("updated_at") val updatedAt: String? = null
 )
 
 @Serializable
 data class SupabaseHomeCatalogSettingsBlob(
-    @SerialName("profile_id") val profileId: Int = 1,
+    @SerialName("profile_id") val profileId: String = "",
     @SerialName("settings_json") val settingsJson: JsonObject = buildJsonObject { },
     @SerialName("updated_at") val updatedAt: String? = null
 )

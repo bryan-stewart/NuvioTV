@@ -809,6 +809,8 @@
     <string name="dv7_libdovi_mode_3_sub" translatable="false">Convert Profile 5 (DV5) streams to Profile 8.1. Same conversion the Convert DV5 to DV8.1 toggle uses.</string>
     <string name="dv7_libdovi_mode_4_title" translatable="false">Mode 4 — 8.4 (static)</string>
     <string name="dv7_libdovi_mode_4_sub" translatable="false">Convert to static profile 8.4.</string>
+    <string name="audio_mpv_hi10p_gnext_sw_title">Hi10P G-NEXT SW fallback (MPV-only)</string>
+    <string name="audio_mpv_hi10p_gnext_sw_subtitle">Use G-NEXT software decoding when stream details identify H.264 Hi10P. Off by default; enable only if Hi10P playback freezes or fails.</string>
     <string name="audio_mpv_hwdec_title">Hardware Decoding (MPV-only)</string>
     <string name="audio_mpv_hwdec_dialog_subtitle">Select how libmpv should use hardware decoders.</string>
     <string name="audio_mpv_hwdec_legacy_direct_copy">Legacy (direct -&gt; copy)</string>
@@ -945,6 +947,8 @@
     <string name="layout_section_content_desc">Control what appears on home and search.</string>
     <string name="layout_collapse_sidebar">Collapse Sidebar</string>
     <string name="layout_collapse_sidebar_sub">Hide sidebar by default; show when focused.</string>
+    <string name="layout_hide_floating_pill">Hide Floating Pill</string>
+    <string name="layout_hide_floating_pill_sub">Hide the floating navigation indicator on the home screen.</string>
     <string name="layout_modern_sidebar">Modern Sidebar</string>
     <string name="layout_modern_sidebar_sub">Enable floating sidebar navigation.</string>
     <string name="layout_modern_sidebar_blur">Modern Sidebar Blur</string>
@@ -1488,27 +1492,6 @@
     <string name="profile_add_new">Add Profile</string>
     <string name="profile_cancel">Cancel</string>
     <string name="profile_save">Save</string>
-    <string name="profile_copy_settings_label">Copy Settings</string>
-    <string name="profile_copy_settings_setup_title">Profile Settings</string>
-    <string name="profile_copy_settings_setup_subtitle">Start fresh or copy TV settings from another profile once.</string>
-    <string name="profile_copy_settings_start_fresh">Start Fresh</string>
-    <string name="profile_copy_settings_primary_source">%1$s (Primary)</string>
-    <string name="profile_copy_settings_create_fresh">Settings: Start fresh</string>
-    <string name="profile_copy_settings_create_source">Settings: %1$s</string>
-    <string name="profile_copy_settings_title">Copy Settings to %1$s</string>
-    <string name="profile_copy_settings_subtitle">Choose a source profile. Its supported TV settings will replace this profile’s settings once.</string>
-    <string name="profile_copy_settings_from">Copy from</string>
-    <string name="profile_copy_settings_action">Copy Settings</string>
-    <string name="profile_copy_settings_copying">Copying\u2026</string>
-    <string name="profile_copy_settings_apply">Apply</string>
-    <string name="profile_copy_settings_credentials_off">API Keys: Do Not Copy</string>
-    <string name="profile_copy_settings_credentials_on">API Keys: Copy Missing Keys</string>
-    <string name="profile_copy_settings_details">Existing API keys are kept. OAuth, addons, plugins, home layout, PIN, history, library, downloads, and device-specific settings stay unchanged.</string>
-    <string name="profile_copy_settings_exclusions">OAuth, addons, plugins, home layout, PIN, history, library, downloads, and device-specific settings stay unchanged.</string>
-    <string name="profile_copy_settings_success">Settings copied from %1$s to %2$s.</string>
-    <string name="profile_copy_settings_error">Could not copy settings. Check your connection and try again.</string>
-    <string name="profile_copy_settings_created_success">Profile created with settings from %1$s.</string>
-    <string name="profile_copy_settings_created_error">Profile created, but settings could not be copied. You can retry from Profile Options.</string>
     <string name="profile_create_error">Could not create profile. Try again.</string>
     <string name="profile_pin_title">Profile PIN lock</string>
     <string name="profile_pin_enabled_subtitle">This profile requires a 4-digit PIN before switching.</string>
@@ -1857,6 +1840,7 @@
     <string name="search_start_subtitle_no_discover">Discover is disabled. Enter at least 2 characters</string>
     <string name="search_recent_title">Recent searches</string>
     <string name="search_recent_clear">Clear history</string>
+    <string name="cd_remove_recent_search">Remove %1$s from recent searches</string>
     <string name="search_voice_no_speech">No speech detected. Try again.</string>
     <string name="search_voice_mic_permission">Microphone permission is required for voice search.</string>
     <string name="search_voice_failed">Voice recognition failed. Try again.</string>
@@ -2171,6 +2155,9 @@
     <string name="profile_delete_confirm_title">Delete Profile?</string>
     <string name="profile_delete_confirm_subtitle">This will permanently delete this profile and all its data including library, watch history, and addon settings. This cannot be undone.</string>
     <string name="profile_delete_btn">Delete Profile</string>
+    <string name="profile_delete_account_blocked_title">Can\'t Delete This Profile</string>
+    <string name="profile_delete_account_blocked_subtitle">%1$s has their own login, so it can\'t be deleted from this device. To remove them from your household, visit %2$s.</string>
+    <string name="profile_delete_account_blocked_dismiss">Got It</string>
     <string name="profile_saving">Saving\u2026</string>
 
     <string name="cast_detail_error">Something went wrong</string>
@@ -3166,5 +3153,16 @@
     <string name="stream_test_error_prefix">Error: %1$s</string>
     <string name="stream_test_video_bitrate">Average Video Bitrate: %1$s</string>
     <string name="stream_test_error_connection">Connection failed. The last played stream link may have expired or is unreachable. Please play the video again and retry.</string>
+
+    <string name="household_picker_title">Which household?</string>
+    <string name="household_picker_subtitle">This login belongs to more than one household. Choose which one this device signs into.</string>
+    <string name="household_picker_you_manage">You manage this</string>
+
+    <string name="household_scope_title">What should this device show?</string>
+    <string name="household_scope_subtitle">You can change this later by signing out and back in.</string>
+    <string name="household_scope_whole_household">Whole Household</string>
+    <string name="household_scope_whole_household_subtitle">See every profile in your household on this device.</string>
+    <string name="household_scope_just_me">Just My Profile</string>
+    <string name="household_scope_just_me_subtitle">Only bring your own profile — for a device just you use.</string>
 
 </resources>

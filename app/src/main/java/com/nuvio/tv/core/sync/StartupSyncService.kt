@@ -193,7 +193,7 @@ class StartupSyncService @Inject constructor(
         }
     }
 
-    fun requestRealtimeSurfacePull(profileId: Int, surface: String) {
+    fun requestRealtimeSurfacePull(profileId: String, surface: String) {
         if (!authManager.isAuthenticated) return
         if (surface != "profiles" && profileManager.activeProfileId.value != profileId) {
             Log.d(TAG, "Ignoring realtime surface=$surface for inactive profile $profileId")
@@ -207,7 +207,6 @@ class StartupSyncService @Inject constructor(
                 "plugins" -> pullRealtimePlugins(profileId)
                 "library" -> pullNuvioLibrary(profileId)
                 "watch_progress" -> {
-                    watchProgressSyncService.restoreLastPushTimestamp(profileId)
                     syncWatchProgressDelta(
                         profileId = profileId,
                         pushUnsynced = false,
@@ -215,8 +214,7 @@ class StartupSyncService @Inject constructor(
                     )
                 }
                 "watched_items" -> {
-                    watchedItemsSyncService.restoreLastPushTimestamp(profileId)
-                    if (watchProgressSyncService.shouldUseSupabaseWatchProgressSync()) {
+                    if (watchProgressSyncService.shouldUseSupabaseWatchProgressSync(profileId)) {
                         pullWatchedItemsDelta(profileId = profileId, pushUnsynced = false)
                     } else {
                         watchProgressRepository.hasCompletedInitialWatchedItemsPull = true
@@ -309,9 +307,7 @@ class StartupSyncService @Inject constructor(
         if (authManager.authState.value !is AuthState.FullAccount) return false
 
         val profileId = profileManager.activeProfileId.value
-        val shouldUseSupabaseWatchProgressSync = watchProgressSyncService.shouldUseSupabaseWatchProgressSync()
-        watchProgressSyncService.restoreLastPushTimestamp(profileId)
-        watchedItemsSyncService.restoreLastPushTimestamp(profileId)
+        val shouldUseSupabaseWatchProgressSync = watchProgressSyncService.shouldUseSupabaseWatchProgressSync(profileId)
         Log.d(
             TAG,
             "Periodic watch state pull: profile=$profileId shouldUseSupabaseWatchProgressSync=$shouldUseSupabaseWatchProgressSync"
@@ -455,9 +451,7 @@ class StartupSyncService @Inject constructor(
             Log.d(TAG, "Pulling remote data for profile $profileId")
             pullBroadRemoteData(profileId, includeProfileSettings)
 
-            val shouldUseSupabaseWatchProgressSync = watchProgressSyncService.shouldUseSupabaseWatchProgressSync()
-            watchProgressSyncService.restoreLastPushTimestamp(profileId)
-            watchedItemsSyncService.restoreLastPushTimestamp(profileId)
+            val shouldUseSupabaseWatchProgressSync = watchProgressSyncService.shouldUseSupabaseWatchProgressSync(profileId)
             Log.d(
                 TAG,
                 "Watch progress sync: shouldUseSupabaseWatchProgressSync=$shouldUseSupabaseWatchProgressSync"
@@ -492,16 +486,14 @@ class StartupSyncService @Inject constructor(
     }
 
     private suspend fun pullWarmRemoteData(
-        profileId: Int,
+        profileId: String,
         userId: String,
         includeProfileSettings: Boolean
     ): Result<Unit> {
         try {
             Log.d(TAG, "Running warm remote sync for profile $profileId")
             pullBroadRemoteData(profileId, includeProfileSettings)
-            val shouldUseSupabaseWatchProgressSync = watchProgressSyncService.shouldUseSupabaseWatchProgressSync()
-            watchProgressSyncService.restoreLastPushTimestamp(profileId)
-            watchedItemsSyncService.restoreLastPushTimestamp(profileId)
+            val shouldUseSupabaseWatchProgressSync = watchProgressSyncService.shouldUseSupabaseWatchProgressSync(profileId)
             Log.d(
                 TAG,
                 "Warm watch progress sync: shouldUseSupabaseWatchProgressSync=$shouldUseSupabaseWatchProgressSync"
@@ -533,7 +525,7 @@ class StartupSyncService @Inject constructor(
     }
 
     private suspend fun pullBroadRemoteData(
-        profileId: Int,
+        profileId: String,
         includeProfileSettings: Boolean
     ) {
         profileSyncService.pullFromRemote().getOrElse { throw it }
@@ -650,7 +642,7 @@ class StartupSyncService @Inject constructor(
         }
     }
 
-    private suspend fun pullNuvioLibrary(profileId: Int): Boolean {
+    private suspend fun pullNuvioLibrary(profileId: String): Boolean {
         val isTrackingLibrary = libraryRepository.sourceMode.first() != LibrarySourceMode.LOCAL
         if (isTrackingLibrary) {
             libraryRepository.hasCompletedInitialPull = true
@@ -677,7 +669,7 @@ class StartupSyncService @Inject constructor(
         }
     }
 
-    private suspend fun pullRealtimePlugins(profileId: Int) {
+    private suspend fun pullRealtimePlugins(profileId: String) {
         pluginManager.isSyncingFromRemote = true
         try {
             val remotePlugins = pluginSyncService.getRemoteRepoUrls().getOrElse { throw it }
@@ -694,7 +686,7 @@ class StartupSyncService @Inject constructor(
         }
     }
 
-    private suspend fun pullRealtimeAddons(profileId: Int) {
+    private suspend fun pullRealtimeAddons(profileId: String) {
         addonRepository.isSyncingFromRemote = true
         try {
             val remoteAddonUrls = addonSyncService.getRemoteAddonUrls().getOrElse { throw it }
@@ -711,7 +703,7 @@ class StartupSyncService @Inject constructor(
     }
 
     private suspend fun pullWatchedItemsDelta(
-        profileId: Int,
+        profileId: String,
         pushUnsynced: Boolean = true
     ): Boolean {
         return try {
@@ -733,7 +725,7 @@ class StartupSyncService @Inject constructor(
         }
     }
 
-    private suspend fun pullWatchedItemsSnapshot(profileId: Int) {
+    private suspend fun pullWatchedItemsSnapshot(profileId: String) {
         try {
             Log.d(TAG, "Starting watched items snapshot sync for profile $profileId")
             val watchedItemsResult = watchedItemsSyncService.syncSnapshotFromRemote(profileId).getOrElse { throw it }
@@ -752,7 +744,7 @@ class StartupSyncService @Inject constructor(
     }
 
     private suspend fun syncWatchProgressDelta(
-        profileId: Int,
+        profileId: String,
         pushUnsynced: Boolean,
         failureMessage: String
     ): Result<Unit> {
@@ -765,7 +757,7 @@ class StartupSyncService @Inject constructor(
     }
 
     private suspend fun syncWatchProgressSnapshot(
-        profileId: Int,
+        profileId: String,
         pushUnsynced: Boolean,
         failureMessage: String
     ): Result<Unit> {
@@ -778,7 +770,7 @@ class StartupSyncService @Inject constructor(
     }
 
     private suspend fun syncWatchProgressRemote(
-        profileId: Int,
+        profileId: String,
         pushUnsynced: Boolean,
         failureMessage: String,
         useSnapshot: Boolean

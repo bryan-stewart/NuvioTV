@@ -36,7 +36,7 @@ class StreamLinkCacheDataStore @Inject constructor(
         private const val FEATURE = "stream_link_cache"
     }
 
-    private fun store(profileId: Int = profileManager.activeProfileId.value) =
+    private fun store(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, FEATURE)
 
     suspend fun save(

@@ -50,11 +50,11 @@ class WatchedSeriesStateHolder @Inject constructor(
     @Volatile
     private var revalidateAfterMap: Map<String, Long> = emptyMap()
     @Volatile
-    private var loadedForProfileId: Int? = null
+    private var loadedForProfileId: String? = null
 
-    private fun store(profileId: Int = profileManager.activeProfileId.value) = factory.get(profileId, FEATURE)
+    private fun store(profileId: String = profileManager.activeProfileId.value) = factory.get(profileId, FEATURE)
 
-    suspend fun loadFromDisk(profileId: Int = profileManager.activeProfileId.value) {
+    suspend fun loadFromDisk(profileId: String = profileManager.activeProfileId.value) {
         if (loadedForProfileId == profileId) return
         val prefs = store(profileId).data.first()
         val persisted = prefs[KEY] ?: emptySet()
@@ -98,7 +98,7 @@ class WatchedSeriesStateHolder @Inject constructor(
         ids: Set<String>,
         validatedIds: Set<String>,
         revalidateAt: Map<String, Long> = emptyMap(),
-        profileId: Int = profileManager.activeProfileId.value
+        profileId: String = profileManager.activeProfileId.value
     ) {
         val idsChanged = _fullyWatchedSeriesIds.value != ids
         _fullyWatchedSeriesIds.value = ids
@@ -153,7 +153,7 @@ class WatchedSeriesStateHolder @Inject constructor(
      * Clears all revalidation deadlines, forcing every series to be re-evaluated
      * on the next CW pipeline cycle. Called when the user manually clears the CW cache.
      */
-    fun clearValidationState(profileId: Int = profileManager.activeProfileId.value) {
+    fun clearValidationState(profileId: String = profileManager.activeProfileId.value) {
         revalidateAfterMap = emptyMap()
         scope.launch {
             store(profileId).edit { prefs -> prefs.remove(REVALIDATE_KEY) }

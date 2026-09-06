@@ -73,7 +73,7 @@ class LibraryRepositoryImpl @Inject constructor(
     @Volatile
     var hasCompletedInitialPull = false
 
-    private fun triggerRemoteSync(profileId: Int) {
+    private fun triggerRemoteSync(profileId: String) {
         if (!hasCompletedInitialPull) return
         if (!authManager.isAuthenticated) return
         syncJob?.cancel()

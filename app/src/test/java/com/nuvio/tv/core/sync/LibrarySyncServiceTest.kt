@@ -29,7 +29,7 @@ class LibrarySyncServiceTest {
         )
         val service = LibrarySyncService(remote, local)
 
-        val result = service.syncFromRemote(profileId = 3).getOrThrow()
+        val result = service.syncFromRemote(profileId = "3").getOrThrow()
 
         assertTrue(result.usedSnapshot)
         assertEquals(1, result.appliedUpserts)
@@ -57,7 +57,7 @@ class LibrarySyncServiceTest {
         val remote = FakeLibrarySyncRemote(events = events)
         val service = LibrarySyncService(remote, local)
 
-        val result = service.syncFromRemote(profileId = 5).getOrThrow()
+        val result = service.syncFromRemote(profileId = "5").getOrThrow()
 
         assertEquals(1_201, result.appliedUpserts)
         assertEquals(1_201, local.state.items.size)
@@ -87,7 +87,7 @@ class LibrarySyncServiceTest {
         )
         val service = LibrarySyncService(remote, local)
 
-        val result = service.syncFromRemote(profileId = 1).getOrThrow()
+        val result = service.syncFromRemote(profileId = "1").getOrThrow()
 
         assertEquals(listOf("local"), local.state.items.map { it.id })
         assertTrue(local.state.pendingUpsertKeys.isEmpty())
@@ -110,7 +110,7 @@ class LibrarySyncServiceTest {
         val remote = FakeLibrarySyncRemote()
         val service = LibrarySyncService(remote, local)
 
-        val result = service.pushToRemote(profileId = 2)
+        val result = service.pushToRemote(profileId = "2")
 
         assertTrue(result.isSuccess)
         assertTrue(remote.pushedItems.isEmpty())
@@ -132,7 +132,7 @@ class LibrarySyncServiceTest {
         val remote = FakeLibrarySyncRemote(deleteFailure = IllegalStateException("offline"))
         val service = LibrarySyncService(remote, local)
 
-        val result = service.pushToRemote(profileId = 1)
+        val result = service.pushToRemote(profileId = "1")
 
         assertTrue(result.isFailure)
         assertEquals(listOf("retry"), local.state.pendingDeleteKeys.map { it.contentId })
@@ -149,7 +149,7 @@ class LibrarySyncServiceTest {
         val remote = FakeLibrarySyncRemote()
         val service = LibrarySyncService(remote, local)
 
-        val result = service.pushToRemote(profileId = 1)
+        val result = service.pushToRemote(profileId = "1")
 
         assertTrue(result.isSuccess)
         assertEquals(setOf("one", "two"), remote.pushedItems.map { it.id }.toSet())
@@ -179,12 +179,12 @@ private class InMemoryLibrarySyncStore(
 ) : LibrarySyncLocalStore {
     var state: LibrarySyncState = initialState
 
-    override suspend fun getSyncState(profileId: Int): LibrarySyncState {
+    override suspend fun getSyncState(profileId: String): LibrarySyncState {
         return state
     }
 
     override suspend fun applyRemoteSnapshot(
-        profileId: Int,
+        profileId: String,
         remoteItems: Collection<SavedLibraryItem>,
         cursorEventId: Long
     ): LibrarySnapshotApplyResult {
@@ -198,7 +198,7 @@ private class InMemoryLibrarySyncStore(
     }
 
     override suspend fun applyRemoteDelta(
-        profileId: Int,
+        profileId: String,
         events: Collection<LibraryDeltaEvent>
     ): LibraryDeltaApplyResult {
         return LibrarySyncReducer.applyDelta(state, events).also { result ->
@@ -206,13 +206,13 @@ private class InMemoryLibrarySyncStore(
         }
     }
 
-    override suspend fun queueAllItemsForPush(profileId: Int): LibrarySyncState {
+    override suspend fun queueAllItemsForPush(profileId: String): LibrarySyncState {
         state = LibrarySyncReducer.queueAllItemsForPush(state)
         return state
     }
 
     override suspend fun acknowledgePush(
-        profileId: Int,
+        profileId: String,
         expectedMutationRevision: Long
     ): Boolean {
         val updated = LibrarySyncReducer.acknowledgePush(
@@ -235,20 +235,20 @@ private class FakeLibrarySyncRemote(
     val deletedKeys = mutableListOf<LibrarySyncKey>()
 
     override suspend fun pullSnapshot(
-        profileId: Int,
+        profileId: String,
         pageSize: Int
     ): List<SavedLibraryItem> {
         calls += "snapshot:$profileId"
         return snapshot
     }
 
-    override suspend fun getDeltaCursor(profileId: Int): Long {
+    override suspend fun getDeltaCursor(profileId: String): Long {
         calls += "cursor:$profileId"
         return cursor
     }
 
     override suspend fun pullDelta(
-        profileId: Int,
+        profileId: String,
         sinceEventId: Long,
         limit: Int
     ): List<LibraryDeltaEvent> {
@@ -260,14 +260,14 @@ private class FakeLibrarySyncRemote(
     }
 
     override suspend fun pushItems(
-        profileId: Int,
+        profileId: String,
         items: Collection<SavedLibraryItem>
     ) {
         pushedItems += items
     }
 
     override suspend fun deleteItems(
-        profileId: Int,
+        profileId: String,
         keys: Collection<LibrarySyncKey>
     ) {
         deleteFailure?.let { throw it }

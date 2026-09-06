@@ -12,7 +12,7 @@ class ProviderCredentialModelsTest {
     @Test
     fun completeRemoteSnapshotDoesNotRequireSeeding() {
         val snapshot = ProviderCredentialSnapshot(
-            profileId = 1,
+            profileId = "1",
             values = listOf(
                 ProviderCredentialValue("debrid:torbox", "api_key", "local-torbox"),
                 ProviderCredentialValue("animeskip", "client_id", "local-anime")
@@ -35,7 +35,7 @@ class ProviderCredentialModelsTest {
     @Test
     fun missingRemoteProviderRequiresSeeding() {
         val snapshot = ProviderCredentialSnapshot(
-            profileId = 1,
+            profileId = "1",
             values = listOf(
                 ProviderCredentialValue("debrid:torbox", "api_key", "local-torbox"),
                 ProviderCredentialValue("animeskip", "client_id", "local-anime")
@@ -54,7 +54,7 @@ class ProviderCredentialModelsTest {
     @Test
     fun `remote values replace only supported local providers`() {
         val local = ProviderCredentialSnapshot(
-            profileId = 2,
+            profileId = "2",
             values = listOf(
                 ProviderCredentialValue("debrid:torbox", "api_key", "local-torbox"),
                 ProviderCredentialValue("animeskip", "client_id", "local-anime")
@@ -80,7 +80,7 @@ class ProviderCredentialModelsTest {
     @Test
     fun `blank remote value is retained as a clear tombstone`() {
         val local = ProviderCredentialSnapshot(
-            profileId = 1,
+            profileId = "1",
             values = listOf(ProviderCredentialValue("mdblist", "api_key", "local"))
         )
         val remote = listOf(

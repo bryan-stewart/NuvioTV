@@ -226,16 +226,84 @@ class WatchProgressPreferencesStorageTest {
     }
 
     @Test
-    fun `empty remote replacement preserves local progress`() = runTest {
+    fun `empty remote replacement clears non-pending local progress`() = runTest {
         val harness = harness(legacyEntries())
         harness.preferences.getAllRawEntries()
         harness.resetUpdateCounts()
 
         harness.preferences.replaceWithRemoteEntries(emptyMap())
 
-        assertEquals(250, harness.preferences.getAllRawEntries().size)
-        assertEquals(0, harness.recent.updateCount)
-        assertEquals(0, harness.archive.updateCount)
+        assertTrue(harness.preferences.getAllRawEntries().isEmpty())
+    }
+
+    @Test
+    fun `pending progress upsert survives an empty snapshot`() = runTest {
+        val harness = harness(mapOf("item" to progress("item", 100L)))
+        harness.preferences.getAllRawEntries()
+
+        val preserved = harness.preferences.replaceWithRemoteEntries(
+            remoteEntries = emptyMap(),
+            pendingUpsertKeys = setOf("item")
+        )
+
+        assertTrue(preserved)
+        assertEquals(setOf("item"), harness.preferences.getAllRawEntries().keys)
+    }
+
+    @Test
+    fun `pending progress delete suppresses a snapshot upsert`() = runTest {
+        val harness = harness(emptyMap())
+        val remote = progress("item", 100L)
+
+        harness.preferences.replaceWithRemoteEntries(
+            remoteEntries = mapOf("item" to remote),
+            pendingDeleteKeys = setOf("item")
+        )
+
+        assertTrue(harness.preferences.getAllRawEntries().isEmpty())
+    }
+
+    @Test
+    fun `remote delta delete cannot remove a pending progress upsert`() = runTest {
+        val local = progress("item", 100L)
+        val harness = harness(mapOf("item" to local))
+        harness.preferences.getAllRawEntries()
+
+        val preserved = harness.preferences.applyRemoteChanges(
+            upserts = emptyMap(),
+            deletes = listOf("item"),
+            pendingUpsertKeys = setOf("item")
+        )
+
+        assertTrue(preserved)
+        assertEquals(local, harness.preferences.getAllRawEntries()["item"])
+    }
+
+    @Test
+    fun `remote delta upsert cannot restore a pending progress delete`() = runTest {
+        val harness = harness(emptyMap())
+
+        harness.preferences.applyRemoteChanges(
+            upserts = mapOf("item" to progress("item", 100L)),
+            deletes = emptyList(),
+            pendingDeleteKeys = setOf("item")
+        )
+
+        assertTrue(harness.preferences.getAllRawEntries().isEmpty())
+    }
+
+    @Test
+    fun `explicit progress flow remains bound after active profile changes`() = runTest {
+        val harness = multiProfileHarness()
+        val first = progress("first", 100L)
+        val second = progress("second", 200L)
+        harness.preferences.saveProgress(first, profileId = "1")
+        harness.preferences.saveProgress(second, profileId = "2")
+        val fixedProfileFlow = harness.preferences.getProgress("first", profileId = "1")
+
+        harness.activeProfile.value = "2"
+
+        assertEquals(first, fixedProfileFlow.first())
     }
 
     @Test
@@ -352,7 +420,7 @@ class WatchProgressPreferencesStorageTest {
             stores.getValue(secondArg<String>())
         }
         val profileManager = mockk<ProfileManager>()
-        every { profileManager.activeProfileId } returns MutableStateFlow(1)
+        every { profileManager.activeProfileId } returns MutableStateFlow("1")
         return Harness(
             preferences = WatchProgressPreferences(factory, profileManager),
             factory = factory,
@@ -360,6 +428,23 @@ class WatchProgressPreferencesStorageTest {
             metadata = metadata,
             recent = recent,
             archive = archive
+        )
+    }
+
+    private fun multiProfileHarness(): MultiProfileHarness {
+        val activeProfile = MutableStateFlow("1")
+        val stores = mutableMapOf<Pair<String, String>, TestPreferencesDataStore>()
+        val factory = mockk<ProfileDataStoreFactory>()
+        every { factory.get(any(), any()) } answers {
+            stores.getOrPut(firstArg<String>() to secondArg<String>()) {
+                TestPreferencesDataStore()
+            }
+        }
+        val profileManager = mockk<ProfileManager>()
+        every { profileManager.activeProfileId } returns activeProfile
+        return MultiProfileHarness(
+            preferences = WatchProgressPreferences(factory, profileManager),
+            activeProfile = activeProfile
         )
     }
 
@@ -410,6 +495,11 @@ class WatchProgressPreferencesStorageTest {
             archive.resetUpdateCount()
         }
     }
+
+    private data class MultiProfileHarness(
+        val preferences: WatchProgressPreferences,
+        val activeProfile: MutableStateFlow<String>
+    )
 
     private class TestPreferencesDataStore(
         initial: Preferences = emptyPreferences()

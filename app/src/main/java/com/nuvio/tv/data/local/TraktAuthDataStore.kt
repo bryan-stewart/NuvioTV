@@ -69,7 +69,7 @@ class TraktAuthDataStore @Inject constructor(
     private val expiresAtKey = longPreferencesKey("expires_at")
     private val pollIntervalKey = intPreferencesKey("poll_interval")
 
-    private fun store(profileId: Int = profileManager.activeProfileId.value) =
+    private fun store(profileId: String = profileManager.activeProfileId.value) =
         factory.get(profileId, FEATURE)
 
     val state: Flow<TraktAuthState> = profileManager.activeProfileId.flatMapLatest { profileId ->
@@ -99,7 +99,7 @@ class TraktAuthDataStore @Inject constructor(
         return getCurrentState(profileManager.activeProfileId.value)
     }
 
-    suspend fun getCurrentState(profileId: Int): TraktAuthState {
+    suspend fun getCurrentState(profileId: String): TraktAuthState {
         val prefs = store(profileId).data.first()
         return TraktAuthState(
             accessToken = prefs[accessTokenKey],

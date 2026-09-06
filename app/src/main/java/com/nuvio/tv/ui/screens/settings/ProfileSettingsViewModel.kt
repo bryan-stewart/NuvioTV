@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -23,9 +23,24 @@ class ProfileSettingsViewModel @Inject constructor(
 
     val profiles: StateFlow<List<UserProfile>> = profileManager.profiles
 
-    val isPrimaryProfileActive: StateFlow<Boolean> = profileManager.activeProfileId
-        .map { it == 1 }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    // Gates whether Settings shows the Account/Profiles sections at all —
+    // was "activeProfileId == 1" back when a local install always had a
+    // numbered primary slot. A real household has no such slot, so this
+    // reflects whoever the backend says manages the household — except
+    // when this device only ever has one profile to begin with (a
+    // non-Manager is always resolved to a single "self" profile; see
+    // sync_pull_profiles's own comment), in which case there's no other
+    // profile whose access this could leak into, so it's shown regardless
+    // of manager status. Otherwise a non-Manager member profile — reachable
+    // by switching profiles on a Manager's whole-household device — would
+    // correctly stay locked out of Account/Profiles, but so would a
+    // non-Manager's own single-profile device, with no way back to Sign Out.
+    val isPrimaryProfileActive: StateFlow<Boolean> = combine(
+        profileManager.activeProfileId,
+        profileManager.profiles
+    ) { activeId, profiles ->
+        profiles.size <= 1 || profiles.firstOrNull { it.id == activeId }?.isManager == true
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     val canAddProfile: Boolean
         get() = profileManager.canCreateProfile
@@ -70,7 +85,7 @@ class ProfileSettingsViewModel @Inject constructor(
         }
     }
 
-    fun deleteProfile(id: Int) {
+    fun deleteProfile(id: String) {
         viewModelScope.launch {
             profileManager.deleteProfile(id)
             profileSyncService.deleteProfileData(id)

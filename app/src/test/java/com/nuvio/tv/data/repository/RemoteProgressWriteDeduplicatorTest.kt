@@ -11,10 +11,10 @@ class RemoteProgressWriteDeduplicatorTest {
         val deduplicator = RemoteProgressWriteDeduplicator(windowMs = 5_000L)
         val progress = progress(position = 30_000L, lastWatched = 1_000L)
 
-        assertTrue(deduplicator.shouldSend(1, "tt123_s1e1", progress, nowMs = 1_000L))
+        assertTrue(deduplicator.shouldSend("1", "tt123_s1e1", progress, nowMs = 1_000L))
         assertFalse(
             deduplicator.shouldSend(
-                1,
+                "1",
                 "tt123_s1e1",
                 progress.copy(lastWatched = 1_100L),
                 nowMs = 1_100L
@@ -27,10 +27,10 @@ class RemoteProgressWriteDeduplicatorTest {
         val deduplicator = RemoteProgressWriteDeduplicator(windowMs = 5_000L)
         val progress = progress(position = 30_000L, lastWatched = 1_000L)
 
-        assertTrue(deduplicator.shouldSend(1, "tt123_s1e1", progress, nowMs = 1_000L))
+        assertTrue(deduplicator.shouldSend("1", "tt123_s1e1", progress, nowMs = 1_000L))
         assertTrue(
             deduplicator.shouldSend(
-                1,
+                "1",
                 "tt123_s1e1",
                 progress.copy(position = 31_000L, lastWatched = 1_100L),
                 nowMs = 1_100L
@@ -43,10 +43,10 @@ class RemoteProgressWriteDeduplicatorTest {
         val deduplicator = RemoteProgressWriteDeduplicator(windowMs = 5_000L)
         val progress = progress(position = 30_000L, lastWatched = 1_000L)
 
-        assertTrue(deduplicator.shouldSend(1, "tt123_s1e1", progress, nowMs = 1_000L))
+        assertTrue(deduplicator.shouldSend("1", "tt123_s1e1", progress, nowMs = 1_000L))
         assertTrue(
             deduplicator.shouldSend(
-                1,
+                "1",
                 "tt123_s1e1",
                 progress.copy(lastWatched = 6_000L),
                 nowMs = 6_000L

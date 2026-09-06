@@ -34,7 +34,7 @@ class SupabaseLibrarySyncRemoteDataSource @Inject constructor(
     }
 
     override suspend fun pullSnapshot(
-        profileId: Int,
+        profileId: String,
         pageSize: Int
     ): List<SavedLibraryItem> =
         collectOffsetPages(pageSize) { limit, offset ->
@@ -49,7 +49,7 @@ class SupabaseLibrarySyncRemoteDataSource @Inject constructor(
             }.map(LibrarySnapshotDto::toSavedLibraryItem)
         }
 
-    override suspend fun getDeltaCursor(profileId: Int): Long {
+    override suspend fun getDeltaCursor(profileId: String): Long {
         val params = buildJsonObject {
             put("p_profile_id", profileId)
         }
@@ -59,7 +59,7 @@ class SupabaseLibrarySyncRemoteDataSource @Inject constructor(
     }
 
     override suspend fun pullDelta(
-        profileId: Int,
+        profileId: String,
         sinceEventId: Long,
         limit: Int
     ): List<LibraryDeltaEvent> {
@@ -81,7 +81,7 @@ class SupabaseLibrarySyncRemoteDataSource @Inject constructor(
     }
 
     override suspend fun pushItems(
-        profileId: Int,
+        profileId: String,
         items: Collection<SavedLibraryItem>
     ) {
         forEachMutationBatch(items, LIBRARY_MUTATION_BATCH_SIZE) { batch ->
@@ -100,7 +100,7 @@ class SupabaseLibrarySyncRemoteDataSource @Inject constructor(
     }
 
     override suspend fun deleteItems(
-        profileId: Int,
+        profileId: String,
         keys: Collection<LibrarySyncKey>
     ) {
         forEachMutationBatch(keys, LIBRARY_MUTATION_BATCH_SIZE) { batch ->
@@ -161,7 +161,7 @@ private data class LibrarySnapshotDto(
     override val genres: List<String> = emptyList(),
     @SerialName("addon_base_url") override val addonBaseUrl: String? = null,
     @SerialName("added_at") override val addedAt: Long = 0L,
-    @SerialName("profile_id") val profileId: Int = 1
+    @SerialName("profile_id") val profileId: String = ""
 ) : LibraryRemoteFields
 
 @Serializable
