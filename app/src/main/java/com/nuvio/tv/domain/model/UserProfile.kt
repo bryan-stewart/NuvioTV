@@ -15,10 +15,17 @@ data class UserProfile(
     val avatarId: String? = null,
     val avatarUrl: String? = null,
     val profileBackgroundId: String? = null,
-    val profileBackgroundUrl: String? = null
+    val profileBackgroundUrl: String? = null,
+    // Set on the dashboard only (Manager, or the profile itself) — this
+    // client never writes it. Null means no override; show name instead.
+    val nickname: String? = null
 ) {
     // Renamed from isPrimary: real profiles have no notion of "id 1" —
     // the Manager is whoever the backend says is the Manager, never
     // inferred from position.
     val isPrimary: Boolean get() = isManager
+
+    // What to actually show wherever this profile's name would otherwise
+    // appear — the dashboard's own "nickname or name" convention.
+    val displayName: String get() = nickname?.takeIf { it.isNotBlank() } ?: name
 }

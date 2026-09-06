@@ -208,6 +208,7 @@ fun ProfileSelectionScreen(
             }
         }
     }
+    val householdAvatarUrisById by viewModel.householdAvatarUrisById.collectAsState()
     val profileBackgroundsById = remember(profileBackgroundCatalog) {
         profileBackgroundCatalog.associateBy { it.id }
     }
@@ -329,6 +330,7 @@ fun ProfileSelectionScreen(
                     canAddProfile = viewModel.canAddProfile,
                     profilePinEnabled = profilePinEnabled,
                     avatarImageUrlsById = avatarImageUrlsById,
+                    householdAvatarUrisById = householdAvatarUrisById,
                     onProfileFocused = onProfileFocusedChange,
                     onProfileSelected = { profile ->
                         if (isManagementMode) {
@@ -801,6 +803,7 @@ private fun ProfileSelectionMainContent(
     canAddProfile: Boolean,
     profilePinEnabled: Map<String, Boolean>,
     avatarImageUrlsById: Map<String, String>,
+    householdAvatarUrisById: Map<String, String>,
     onProfileFocused: (UserProfile?) -> Unit,
     onProfileSelected: (UserProfile) -> Unit,
     onProfileLongPress: (UserProfile) -> Unit,
@@ -848,6 +851,7 @@ private fun ProfileSelectionMainContent(
             canAddProfile = canAddProfile,
             profilePinEnabled = profilePinEnabled,
             avatarImageUrlsById = avatarImageUrlsById,
+            householdAvatarUrisById = householdAvatarUrisById,
             onProfileFocused = onProfileFocused,
             onProfileSelected = onProfileSelected,
             onProfileLongPress = onProfileLongPress,
@@ -865,6 +869,26 @@ private fun ProfileSelectionMainContent(
     }
 }
 
+// profile.avatarUrl is the household's own avatar assignment (see
+// sync_pull_profiles's own comment): either a plain http(s) catalog URL
+// (use as-is) or a bare path in the private "household-avatars" bucket for
+// a custom upload, which only householdAvatarUrisById (resolved via an
+// authenticated download, see ProfileSelectionViewModel) can turn into a
+// displayable URL. No avatarUrl at all falls back to the catalog pick by
+// avatarId, same as before this existed.
+private fun resolveProfileAvatarImageUrl(
+    profile: UserProfile,
+    avatarImageUrlsById: Map<String, String>,
+    householdAvatarUrisById: Map<String, String>
+): String? {
+    val avatarUrl = profile.avatarUrl?.takeIf { it.isNotBlank() }
+    return when {
+        avatarUrl == null -> profile.avatarId?.let(avatarImageUrlsById::get)
+        avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://") -> avatarUrl
+        else -> householdAvatarUrisById[profile.id]
+    }
+}
+
 @Composable
 private fun ProfileGrid(
     profiles: List<UserProfile>,
@@ -873,6 +897,7 @@ private fun ProfileGrid(
     canAddProfile: Boolean,
     profilePinEnabled: Map<String, Boolean>,
     avatarImageUrlsById: Map<String, String>,
+    householdAvatarUrisById: Map<String, String>,
     onProfileFocused: (UserProfile?) -> Unit,
     onProfileSelected: (UserProfile) -> Unit,
     onProfileLongPress: (UserProfile) -> Unit,
@@ -931,8 +956,11 @@ private fun ProfileGrid(
                 profiles.forEachIndexed { index, profile ->
                     ProfileCard(
                         profile = profile,
-                        avatarImageUrl = profile.avatarUrl?.takeIf { it.isNotBlank() }
-                            ?: profile.avatarId?.let(avatarImageUrlsById::get),
+                        avatarImageUrl = resolveProfileAvatarImageUrl(
+                            profile,
+                            avatarImageUrlsById,
+                            householdAvatarUrisById
+                        ),
                         focusRequester = focusRequesters[index],
                         compact = useCompactCards,
                         onFocused = { onProfileFocused(profile) },
@@ -1078,7 +1106,7 @@ private fun ProfileCard(
                 contentAlignment = Alignment.Center
             ) {
                 ProfileAvatarCircle(
-                    name = profile.name,
+                    name = profile.displayName,
                     colorHex = profile.avatarColorHex,
                     size = avatarSize,
                     avatarImageUrl = avatarImageUrl
@@ -1119,7 +1147,7 @@ private fun ProfileCard(
         )
 
         Text(
-            text = profile.name,
+            text = profile.displayName,
             color = nameColor,
             fontSize = if (compact) 15.sp else 17.sp,
             fontWeight = nameWeight,

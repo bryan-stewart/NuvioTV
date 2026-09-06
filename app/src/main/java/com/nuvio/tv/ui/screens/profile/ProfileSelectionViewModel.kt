@@ -64,6 +64,17 @@ class ProfileSelectionViewModel @Inject constructor(
     private val _avatarCatalog = MutableStateFlow<List<AvatarCatalogItem>>(emptyList())
     val avatarCatalog: StateFlow<List<AvatarCatalogItem>> = _avatarCatalog.asStateFlow()
 
+    // profile.avatarUrl is now the household's own avatar assignment (see
+    // sync_pull_profiles's own comment): a plain http(s) URL for a catalog
+    // pick, but a bare path in the private "household-avatars" bucket for a
+    // custom upload, which needs an authenticated download before it's
+    // usable as an image URL. Resolved here (keyed by profile id, since the
+    // path itself carries no catalog id to key by) rather than inline in
+    // the composable, so it survives recomposition and stays in step with
+    // profiles without re-downloading on every frame.
+    private val _householdAvatarUrisById = MutableStateFlow<Map<String, String>>(emptyMap())
+    val householdAvatarUrisById: StateFlow<Map<String, String>> = _householdAvatarUrisById.asStateFlow()
+
     val hasProfileAvatarAccess: StateFlow<Boolean> = memberAccessRepository.access
         .map { access -> access.entitlements.includes(CosmeticEntitlement.PROFILE_AVATARS) }
         .distinctUntilChanged()
@@ -108,6 +119,36 @@ class ProfileSelectionViewModel @Inject constructor(
                 }
             }
         }
+        viewModelScope.launch {
+            profiles.collectLatest { list -> resolveHouseholdAvatars(list) }
+        }
+    }
+
+    private suspend fun resolveHouseholdAvatars(list: List<UserProfile>) {
+        val storagePathsById = list.mapNotNull { profile ->
+            val url = profile.avatarUrl?.takeIf { it.isNotBlank() }
+            if (url != null && !url.startsWith("http://") && !url.startsWith("https://")) {
+                profile.id to url
+            } else {
+                null
+            }
+        }
+        if (storagePathsById.isEmpty()) {
+            if (_householdAvatarUrisById.value.isNotEmpty()) _householdAvatarUrisById.value = emptyMap()
+            return
+        }
+        val resolved = buildMap {
+            storagePathsById.forEach { (profileId, path) ->
+                try {
+                    avatarRepository.getHouseholdAvatarImageUri(path)?.let { uri -> put(profileId, uri) }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    Log.e("ProfileSelectionVM", "Failed to resolve household avatar for $profileId", error)
+                }
+            }
+        }
+        _householdAvatarUrisById.value = resolved
     }
 
     fun loadAvatarCatalog() {

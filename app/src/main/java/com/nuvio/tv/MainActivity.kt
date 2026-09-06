@@ -444,9 +444,24 @@ open class MainActivity : ComponentActivity() {
                     .getOrDefault(emptyList())
             }
 
-            val activeProfileAvatarImageUrl = remember(activeProfile, avatarCatalog) {
-                activeProfile?.avatarUrl?.takeIf { it.isNotBlank() }
-                    ?: activeProfile?.avatarId?.let { avatarRepository.getAvatarImageUrl(it, avatarCatalog) }
+            // activeProfile.avatarUrl is a household's own avatar assignment
+            // now (see sync_pull_profiles's own comment) — when it's a
+            // custom upload rather than a catalog pick, it's a bare path in
+            // the private "household-avatars" bucket, not a ready-to-fetch
+            // URL, so resolving it needs an authenticated request (same
+            // shape as the supporter-avatar catalog above), not a plain
+            // remember{}. Starts null and swaps in once resolved, same
+            // "show the plain colour+initial circle while unresolved"
+            // fallback getHouseholdAvatarImageUri already provides on
+            // failure.
+            var activeProfileAvatarImageUrl by remember { mutableStateOf<String?>(null) }
+            LaunchedEffect(activeProfile?.id, activeProfile?.avatarUrl, activeProfile?.avatarId, avatarCatalog) {
+                val avatarUrl = activeProfile?.avatarUrl?.takeIf { it.isNotBlank() }
+                activeProfileAvatarImageUrl = when {
+                    avatarUrl == null -> activeProfile?.avatarId?.let { avatarRepository.getAvatarImageUrl(it, avatarCatalog) }
+                    avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://") -> avatarUrl
+                    else -> avatarRepository.getHouseholdAvatarImageUri(avatarUrl)
+                }
             }
 
             val mainUiPrefsFlow = remember(
@@ -1030,7 +1045,7 @@ open class MainActivity : ComponentActivity() {
                                     sidebarCollapsed = sidebarCollapsed,
                                     modernSidebarBlurEnabled = modernSidebarBlurEnabled,
                                     hideBuiltInHeaders = hideBuiltInHeadersForFloatingPill,
-                                    activeProfileName = activeProfile?.name ?: "",
+                                    activeProfileName = activeProfile?.displayName ?: "",
                                     activeProfileColorHex = activeProfile?.avatarColorHex ?: "#1E88E5",
                                     activeProfileAvatarImageUrl = activeProfileAvatarImageUrl,
                                     showProfileSelector = profiles.size > 1,
@@ -1049,7 +1064,7 @@ open class MainActivity : ComponentActivity() {
                                     selectedDrawerRoute = selectedDrawerRoute,
                                     sidebarCollapsed = sidebarCollapsed,
                                     hideBuiltInHeaders = false,
-                                    activeProfileName = activeProfile?.name ?: "",
+                                    activeProfileName = activeProfile?.displayName ?: "",
                                     activeProfileColorHex = activeProfile?.avatarColorHex ?: "#1E88E5",
                                     activeProfileAvatarImageUrl = activeProfileAvatarImageUrl,
                                     showProfileSelector = profiles.size > 1,

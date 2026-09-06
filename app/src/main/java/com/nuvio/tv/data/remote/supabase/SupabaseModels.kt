@@ -169,6 +169,10 @@ data class SupabaseProfile(
     @SerialName("avatar_url") val avatarUrl: String? = null,
     @SerialName("profile_background_id") val profileBackgroundId: String? = null,
     @SerialName("profile_background_url") val profileBackgroundUrl: String? = null,
+    // Read-only: set on the dashboard (by the household's Manager, or the
+    // profile itself), never written from this client. Null means no
+    // override — show this profile's own name instead.
+    val nickname: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null
 )

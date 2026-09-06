@@ -166,7 +166,8 @@ internal data class ProfileJson(
     val avatarId: String? = null,
     val avatarUrl: String? = null,
     val profileBackgroundId: String? = null,
-    val profileBackgroundUrl: String? = null
+    val profileBackgroundUrl: String? = null,
+    val nickname: String? = null
 ) {
     fun toDomain() = UserProfile(
         id = id,
@@ -180,7 +181,8 @@ internal data class ProfileJson(
         avatarId = avatarId,
         avatarUrl = avatarUrl,
         profileBackgroundId = profileBackgroundId,
-        profileBackgroundUrl = profileBackgroundUrl
+        profileBackgroundUrl = profileBackgroundUrl,
+        nickname = nickname
     )
 
     companion object {
@@ -196,7 +198,8 @@ internal data class ProfileJson(
             avatarId = profile.avatarId,
             avatarUrl = profile.avatarUrl,
             profileBackgroundId = profile.profileBackgroundId,
-            profileBackgroundUrl = profile.profileBackgroundUrl
+            profileBackgroundUrl = profile.profileBackgroundUrl,
+            nickname = profile.nickname
         )
     }
 }
